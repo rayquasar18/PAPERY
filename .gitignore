@@ -1,3 +1,6 @@
+# Reference projects (local only, not tracked)
+.reference/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
