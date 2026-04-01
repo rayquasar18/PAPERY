@@ -146,17 +146,77 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation.
+Complete mapping of all v1 requirements to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| AUTH-01 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| AUTH-02 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| AUTH-03 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| AUTH-04 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| AUTH-05 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| AUTH-06 | Phase 4: Authentication — Advanced & Password | ⬜ Not started |
+| AUTH-07 | Phase 4: Authentication — Advanced & Password | ⬜ Not started |
+| AUTH-08 | Phase 4: Authentication — Advanced & Password | ⬜ Not started |
+| AUTH-09 | Phase 3: Authentication — Core Flows | ⬜ Not started |
+| USER-01 | Phase 5: User Profile & Account Management | ⬜ Not started |
+| USER-02 | Phase 5: User Profile & Account Management | ⬜ Not started |
+| USER-03 | Phase 4: Authentication — Advanced & Password | ⬜ Not started |
+| USER-04 | Phase 5: User Profile & Account Management | ⬜ Not started |
+| TIER-01 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| TIER-02 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| TIER-03 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| TIER-04 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| TIER-05 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| TIER-06 | Phase 6: Tier System & Permissions | ⬜ Not started |
+| ADMIN-01 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| ADMIN-02 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| ADMIN-03 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| ADMIN-04 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| ADMIN-05 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| ADMIN-06 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
+| PROJ-01 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-02 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-03 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-04 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-05 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-06 | Phase 8: Project System & ACL | ⬜ Not started |
+| INFRA-01 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-02 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-03 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-04 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-05 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
+| INFRA-06 | Phase 2: Error Handling, API Structure & Health | ⬜ Not started |
+| INFRA-07 | Phase 2: Error Handling, API Structure & Health | ⬜ Not started |
+| INFRA-08 | Phase 2: Error Handling, API Structure & Health | ⬜ Not started |
+| INFRA-09 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-10 | Phase 2: Error Handling, API Structure & Health | ⬜ Not started |
+| INFRA-11 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-12 | Phase 2: Error Handling, API Structure & Health | ⬜ Not started |
+| INFRA-13 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
+| INFRA-14 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| INFRA-15 | Phase 1: Backend Core Infrastructure | ⬜ Not started |
+| FRONT-01 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-02 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-03 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-04 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-05 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-06 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-07 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-08 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-09 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-10 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| FRONT-11 | Phase 9: Frontend Foundation & Auth UI | ⬜ Not started |
+| QFLOW-01 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
+| QFLOW-02 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
+| QFLOW-03 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
+| QFLOW-04 | Phase 10: Dashboard, Admin UI & QFlow Stubs | ⬜ Not started |
 
 **Coverage:**
-- v1 requirements: 55 total
-- Mapped to phases: 0
-- Unmapped: 55 ⚠️ (pending roadmap)
+- v1 requirements: 61 total
+- Mapped to phases: 61 ✅
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after initial definition*
+*Last updated: 2026-04-01 — traceability populated after roadmap creation*
