@@ -1,12 +1,23 @@
+"""PAPERY backend — FastAPI application entry point."""
+
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
 
+from app.api.v1 import api_v1_router
 from app.core.config import settings
+from app.core.exceptions import PaperyError
 from app.extensions import ext_database, ext_minio, ext_redis
+from app.middleware.request_id import RequestIDMiddleware
+from app.schemas.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +42,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/api/v1/openapi.json" if settings.DEBUG else None,
+    docs_url="/api/v1/docs" if settings.DEBUG else None,
+    redoc_url="/api/v1/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
+
+# --- Middleware (order matters: first added = outermost) ---
+
+# CORS must be outermost to handle preflight and add headers to error responses
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -44,7 +60,104 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
-from app.api.v1.health import router as health_router  # noqa: E402
+# Request ID middleware — sets request.state.request_id for all requests
+app.add_middleware(RequestIDMiddleware)
 
-app.include_router(health_router, prefix="/api/v1", tags=["health"])
+
+# --- Exception Handlers ---
+
+def _get_request_id(request: Request) -> str:
+    """Safely get request_id from request.state, with fallback."""
+    return getattr(request.state, "request_id", "unknown")
+
+
+@app.exception_handler(PaperyError)
+async def papery_error_handler(request: Request, exc: PaperyError) -> JSONResponse:
+    """Handle all PAPERY domain exceptions → consistent ErrorResponse."""
+    logger.warning(
+        "PaperyError [%s] %s: %s",
+        exc.error_code,
+        exc.status_code,
+        exc.message,
+        extra={"request_id": _get_request_id(request)},
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            success=False,
+            error_code=exc.error_code,
+            message=exc.message,
+            detail=exc.detail,
+            request_id=_get_request_id(request),
+        ).model_dump(),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Handle Pydantic request validation errors → consistent ErrorResponse."""
+    return JSONResponse(
+        status_code=422,
+        content=ErrorResponse(
+            success=False,
+            error_code="VALIDATION_ERROR",
+            message="Request validation failed",
+            detail=exc.errors(),
+            request_id=_get_request_id(request),
+        ).model_dump(),
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    """Handle Starlette/FastAPI HTTPExceptions (404, 405, etc.) → consistent ErrorResponse."""
+    # Map common HTTP status codes to error codes
+    error_code_map: dict[int, str] = {
+        400: "BAD_REQUEST",
+        404: "NOT_FOUND",
+        405: "METHOD_NOT_ALLOWED",
+        408: "REQUEST_TIMEOUT",
+        500: "INTERNAL_ERROR",
+    }
+    error_code = error_code_map.get(exc.status_code, f"HTTP_{exc.status_code}")
+    message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            success=False,
+            error_code=error_code,
+            message=message,
+            detail=None,
+            request_id=_get_request_id(request),
+        ).model_dump(),
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all for unhandled exceptions → 500 ErrorResponse. Never expose stack traces."""
+    logger.error(
+        "Unhandled exception: %s",
+        exc,
+        exc_info=True,
+        extra={"request_id": _get_request_id(request)},
+    )
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            success=False,
+            error_code="INTERNAL_ERROR",
+            message="An unexpected error occurred",
+            detail=None,
+            request_id=_get_request_id(request),
+        ).model_dump(),
+    )
+
+
+# --- Routes ---
+app.include_router(api_v1_router)
