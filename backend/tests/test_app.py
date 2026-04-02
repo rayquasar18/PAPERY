@@ -54,10 +54,10 @@ class TestAppConfiguration:
         assert "/api/v1/health" in routes
 
     def test_app_has_docs_in_debug_mode(self):
-        """When DEBUG=true, /docs should be available."""
+        """When DEBUG=true, docs should be at /api/v1/docs."""
         from app.main import app
 
-        assert app.docs_url is not None
+        assert app.docs_url == "/api/v1/docs"
 
     def test_app_has_cors_middleware(self):
         """App should have CORSMiddleware configured."""
