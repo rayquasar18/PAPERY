@@ -4,31 +4,31 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 1 — Backend Core Infrastructure
 status: executing
-stopped_at: Completed 01-04-PLAN.md (Redis & MinIO Extensions)
-last_updated: "2026-04-02T05:38:21.015Z"
+stopped_at: Completed 01-05-PLAN.md (Makefile Automation & Testing Foundation)
+last_updated: "2026-04-02T05:48:05.774Z"
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State: PAPERY
 
 **Last updated:** 2026-04-02
 **Current phase:** Phase 1 — Backend Core Infrastructure
-**Status:** IN PROGRESS (Plan 04/05 complete)
+**Status:** PHASE 1 COMPLETE — All 5/5 plans done
 
 ---
 
 ## Active Phase
 
-### Phase 1: Backend Core Infrastructure
+### Phase 1: Backend Core Infrastructure — COMPLETE ✅
 
 **Goal:** Establish the foundational backend skeleton — project structure, database, Redis, MinIO connections, configuration system, Docker Compose dev environment, and core patterns (dual-ID, soft delete, layered architecture).
 
-**Status:** IN PROGRESS — Plan 4 of 5 complete
-**Plans:** 01-01 ✅ | 01-02 ✅ | 01-03 ✅ | 01-04 ✅ | 01-05 ⬜
+**Status:** COMPLETE — All 5 plans executed
+**Plans:** 01-01 ✅ | 01-02 ✅ | 01-03 ✅ | 01-04 ✅ | 01-05 ✅
 
 | Requirement | Status | Notes |
 |------------|--------|-------|
@@ -56,7 +56,7 @@ progress:
 
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
-| 1 | Backend Core Infrastructure | 8 | 🔄 In Progress (7/8 done) |
+| 1 | Backend Core Infrastructure | 8 | ✅ Complete (5/5 plans) |
 | 2 | Error Handling, API Structure & Health | 5 | ⬜ Not started |
 | 3 | Authentication — Core Flows | 6 | ⬜ Not started |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
@@ -87,6 +87,8 @@ progress:
 | aclose() not close() for Redis async cleanup | 1 | redis.asyncio requires aclose() for proper coroutine cleanup | 2026-04-02 |
 | MinIO init/shutdown are sync (no await) | 1 | MinIO SDK is urllib3-based; only upload_file() needs run_in_executor | 2026-04-02 |
 | asyncio.get_running_loop() for upload_file() | 1 | get_event_loop() is deprecated in Python 3.10+, raises warnings in 3.12 | 2026-04-02 |
+| asyncio_mode=auto eliminates test markers | 1 | pytest-asyncio auto mode detects async tests; no @pytest.mark.asyncio needed | 2026-04-02 |
+| per-file-ignores S101/S106/F841 for tests | 1 | Standard ruff config; assert/hardcoded passwords are intentional in test files | 2026-04-02 |
 
 ---
 
@@ -98,9 +100,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Completed 01-04-PLAN.md (Redis & MinIO Extensions)
+**Stopped at:** Completed 01-05-PLAN.md (Makefile Automation & Testing Foundation)
 **Resume file:** None
-**Next action:** Execute Plan 05 — final plan of Phase 1
+**Next action:** Phase 1 complete — ready for Phase 2 (Error Handling, API Structure & Health)
 
 ---
 
@@ -114,6 +116,7 @@ None currently.
 
 ---
 | Phase 01 P04 | 14min | 3 tasks | 3 files |
+| Phase 01 P05 | 18min | 3 tasks | 6 files |
 
 ## Notes
 

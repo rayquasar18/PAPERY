@@ -55,21 +55,21 @@ Requirements for initial release — SaaS foundation. Each maps to roadmap phase
 
 ### Backend Infrastructure
 
-- [ ] **INFRA-01**: FastAPI backend with layered architecture (Router → Service → CRUD → Schema → Model)
-- [ ] **INFRA-02**: PostgreSQL 16+ with SQLAlchemy 2.0 async ORM and Alembic migrations (committed to git)
+- [x] **INFRA-01**: FastAPI backend with layered architecture (Router → Service → CRUD → Schema → Model)
+- [x] **INFRA-02**: PostgreSQL 16+ with SQLAlchemy 2.0 async ORM and Alembic migrations (committed to git)
 - [x] **INFRA-03**: Redis 7+ with namespace isolation (cache db=0, queue db=1, rate_limit db=2)
 - [x] **INFRA-04**: MinIO file storage with presigned URL support
 - [ ] **INFRA-05**: ARQ background task worker for async processing
 - [ ] **INFRA-06**: Structured error handling with custom exception hierarchy and consistent API error format
 - [ ] **INFRA-07**: API versioning at /api/v1/ with OpenAPI auto-documentation
 - [ ] **INFRA-08**: Health check endpoints (/health for liveness, /ready for deep checks)
-- [ ] **INFRA-09**: Environment-based configuration (Pydantic Settings) with startup validation (reject placeholder values)
+- [x] **INFRA-09**: Environment-based configuration (Pydantic Settings) with startup validation (reject placeholder values)
 - [ ] **INFRA-10**: CORS configuration — explicit origin allowlist from environment, never wildcard in production
-- [ ] **INFRA-11**: Docker Compose development environment (backend, worker, PostgreSQL, Redis, MinIO)
+- [x] **INFRA-11**: Docker Compose development environment (backend, worker, PostgreSQL, Redis, MinIO)
 - [ ] **INFRA-12**: Production-optimized Docker images (multi-stage build, no --reload, proper workers)
 - [ ] **INFRA-13**: CI/CD pipeline via GitHub Actions (lint, type check, test, build, deploy)
-- [ ] **INFRA-14**: Dual ID strategy — int id (internal) + UUID (public API)
-- [ ] **INFRA-15**: Soft delete mixin on all core entities (never hard delete)
+- [x] **INFRA-14**: Dual ID strategy — int id (internal) + UUID (public API)
+- [x] **INFRA-15**: Soft delete mixin on all core entities (never hard delete)
 
 ### Frontend Foundation
 
