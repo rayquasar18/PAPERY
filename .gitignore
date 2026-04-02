@@ -204,3 +204,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Docker volumes (local development data)
+docker/volumes/
+docker/middleware.env
