@@ -47,6 +47,11 @@ class AppSettings(
                 raise ValueError(
                     f"MINIO_SECRET_KEY must be set in {self.ENVIRONMENT} environment"
                 )
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError(
+                    "CORS wildcard '*' is not allowed in non-local environments. "
+                    "Set explicit origins in CORS_ORIGINS."
+                )
         if self.ENVIRONMENT == "production" and not self.SMTP_HOST:
             raise ValueError("SMTP_HOST is required in production environment")
         return self
