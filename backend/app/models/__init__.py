@@ -9,7 +9,7 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 __all__ = [
     "Base",
-    "UUIDMixin",
-    "TimestampMixin",
     "SoftDeleteMixin",
+    "TimestampMixin",
+    "UUIDMixin",
 ]
