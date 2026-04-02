@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.extensions import ext_database
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +15,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize and shutdown extensions."""
     logger.info("Starting PAPERY backend v%s [%s]", settings.APP_VERSION, settings.ENVIRONMENT)
-    # Extensions will be initialized here in subsequent plans:
-    # await ext_database.init()
-    # await ext_redis.init()
-    # await ext_minio.init()
+    await ext_database.init()
+    # await ext_redis.init()    # Plan 04
+    # await ext_minio.init()    # Plan 04
     logger.info("All extensions initialized")
     yield
-    # Shutdown in reverse order:
-    # await ext_minio.shutdown()
-    # await ext_redis.shutdown()
-    # await ext_database.shutdown()
+    # await ext_minio.shutdown()   # Plan 04
+    # await ext_redis.shutdown()   # Plan 04
+    await ext_database.shutdown()
     logger.info("All extensions shut down")
 
 
