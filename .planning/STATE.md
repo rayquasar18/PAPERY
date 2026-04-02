@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-04-02
 **Current phase:** Phase 1 — Backend Core Infrastructure
-**Status:** IN PROGRESS (Plan 03/05 complete)
+**Status:** IN PROGRESS (Plan 04/05 complete)
 
 ---
 
@@ -12,15 +12,15 @@
 
 **Goal:** Establish the foundational backend skeleton — project structure, database, Redis, MinIO connections, configuration system, Docker Compose dev environment, and core patterns (dual-ID, soft delete, layered architecture).
 
-**Status:** IN PROGRESS — Plan 3 of 5 complete
-**Plans:** 01-01 ✅ | 01-02 ✅ | 01-03 ✅ | 01-04 ⬜ | 01-05 ⬜
+**Status:** IN PROGRESS — Plan 4 of 5 complete
+**Plans:** 01-01 ✅ | 01-02 ✅ | 01-03 ✅ | 01-04 ✅ | 01-05 ⬜
 
 | Requirement | Status | Notes |
 |------------|--------|-------|
 | INFRA-01 | ✅ Complete | FastAPI layered architecture scaffold |
 | INFRA-02 | ✅ Complete | PostgreSQL + SQLAlchemy async + Alembic (Plan 03) |
-| INFRA-03 | ⬜ Not started | Redis namespace isolation (Plan 04) |
-| INFRA-04 | ⬜ Not started | MinIO file storage (Plan 04) |
+| INFRA-03 | ✅ Complete | Redis namespace isolation (Plan 04) |
+| INFRA-04 | ✅ Complete | MinIO file storage (Plan 04) |
 | INFRA-09 | ✅ Complete | Pydantic Settings configuration system |
 | INFRA-11 | ✅ Complete | Docker Compose dev environment (Plan 02) |
 | INFRA-14 | ✅ Complete | Dual ID strategy — Base BigInteger PK + UUIDMixin (Plan 03) |
@@ -41,7 +41,7 @@
 
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
-| 1 | Backend Core Infrastructure | 8 | 🔄 In Progress (5/8 done) |
+| 1 | Backend Core Infrastructure | 8 | 🔄 In Progress (7/8 done) |
 | 2 | Error Handling, API Structure & Health | 5 | ⬜ Not started |
 | 3 | Authentication — Core Flows | 6 | ⬜ Not started |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
@@ -69,6 +69,9 @@
 | server_default=func.now() for timestamps | 1 | Database-side defaults more reliable than Python-side for bulk inserts | 2026-04-02 |
 | NullPool for Alembic migrations | 1 | Avoids connection pool leaks during migration runs | 2026-04-02 |
 | Barrel import in models/__init__.py | 1 | Alembic autogenerate only discovers models registered in Base.metadata | 2026-04-02 |
+| aclose() not close() for Redis async cleanup | 1 | redis.asyncio requires aclose() for proper coroutine cleanup | 2026-04-02 |
+| MinIO init/shutdown are sync (no await) | 1 | MinIO SDK is urllib3-based; only upload_file() needs run_in_executor | 2026-04-02 |
+| asyncio.get_running_loop() for upload_file() | 1 | get_event_loop() is deprecated in Python 3.10+, raises warnings in 3.12 | 2026-04-02 |
 
 ---
 
@@ -80,9 +83,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Completed 01-03-PLAN.md (Database Layer, Models & Alembic)
+**Stopped at:** Completed 01-04-PLAN.md (Redis & MinIO Extensions)
 **Resume file:** None
-**Next action:** Execute Plan 04 — Redis + MinIO extensions
+**Next action:** Execute Plan 05 — final plan of Phase 1
 
 ---
 
@@ -92,6 +95,7 @@ None currently.
 |-------|------|----------|-------|-------|
 | 01 | 01 | 6min | 6 | 20 |
 | 01 | 03 | 4min | 4 | 8 |
+| 01 | 04 | 14min | 3 | 3 |
 
 ---
 
