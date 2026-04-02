@@ -1,227 +1,359 @@
 # Research: Docker Compose Split Setup for Development
 
+**Researcher:** Claude
 **Date:** 2026-04-02
-**Scope:** Docker Compose split strategy, dev workflow, service definitions, health checks, volumes, networking, Dockerfile.dev
-**Requirements:** INFRA-11 (D-12, D-13)
-**Reference:** `.reference/dify/docker/` — split compose pattern
+**Requirement:** INFRA-11
+**Decisions:** D-12 (Split Docker Compose), D-13 (Split Dockerfiles), D-14 (Makefile)
 
 ---
 
-## 1. Split Strategy
+## 1. Split Strategy Overview
 
-| File | Purpose | Usage |
-|------|---------|-------|
-| `docker/docker-compose.middleware.yaml` | DB + Redis + MinIO only | **Daily dev** — middleware in Docker, app locally |
-| `docker/docker-compose.yaml` | Full stack (middleware + app) | CI, staging, production |
+Two compose files under `docker/`:
 
-**Key insight from Dify:** Middleware file is standalone (NOT an override). Each works independently.
-Dify uses `env_file: [./middleware.env]` for middleware and YAML anchors (`x-shared-env: &shared-api-worker-env`) for shared env in full stack.
+| File | Purpose | When to use |
+|------|---------|-------------|
+| `docker-compose.middleware.yaml` | PostgreSQL + Redis + MinIO only | Daily dev — run middleware in containers, backend/frontend locally with hot-reload |
+| `docker-compose.yaml` | Full stack (api + worker + middleware + nginx) | CI, staging, production, or testing full integration |
 
-### File Layout
-
-```
-docker/
-├── docker-compose.yaml             # Full stack
-├── docker-compose.middleware.yaml   # Middleware only
-├── .env.example                     # Full env template (host-side substitution)
-├── middleware.env.example           # Middleware-only env (container env_file)
-└── volumes/                         # Persistent data (gitignored)
-    ├── postgres/data/
-    ├── redis/data/
-    └── minio/data/
-```
-
-### Env Strategy
-
-- `docker/middleware.env` — loaded via `env_file:` in middleware compose (container-side)
-- `docker/.env` — loaded by Docker Compose for `${VAR}` substitution (host-side)
-- Use `${VAR:-default}` everywhere — compose runs even without `.env`
-- **Critical:** Backend `.env` and Docker env files MUST share same credential defaults
+**Key insight from Dify:** The middleware file uses a separate `middleware.env` for service-specific vars, while the full stack uses the root `.env`. PAPERY simplifies this — single `.env.example` at root (decision D-17), Docker Compose reads from `docker/.env` (symlinked or copied from root).
 
 ---
 
-## 2. Dev Workflow
+## 2. docker-compose.middleware.yaml — Service Definitions
 
-```bash
-# Start middleware → run backend/frontend locally
-cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env up -d
-cd backend && uv run uvicorn app.main:app --reload --port 8000
-cd frontend && pnpm dev
-```
-
-Backend connects to `localhost:5432` / `:6379` / `:9000` — all exposed by middleware containers.
-
-### Makefile Targets
-
-```makefile
-dev-up:     cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p papery-dev up -d
-dev-down:   cd docker && docker compose -f docker-compose.middleware.yaml -p papery-dev down
-dev-reset:  cd docker && docker compose -f docker-compose.middleware.yaml -p papery-dev down -v
-stack-up:   cd docker && docker compose -f docker-compose.yaml up -d --build
-stack-down: cd docker && docker compose -f docker-compose.yaml down
-```
-
----
-
-## 3. Middleware Service Definitions
+### 2.1 PostgreSQL 17
 
 ```yaml
 services:
-  db:
+  postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-    env_file: [./middleware.env]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-papery}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-papery_dev_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-papery_dev_secret}
       POSTGRES_DB: ${POSTGRES_DB:-papery}
       PGDATA: /var/lib/postgresql/data/pgdata
     command: >
-      postgres -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
-               -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}
-               -c work_mem=${POSTGRES_WORK_MEM:-4MB}
-               -c maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
-               -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
-    volumes: ["./volumes/postgres/data:/var/lib/postgresql/data"]
-    ports: ["${EXPOSE_POSTGRES_PORT:-5432}:5432"]
+      postgres
+        -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+        -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}
+        -c work_mem=${POSTGRES_WORK_MEM:-4MB}
+        -c maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+        -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-papery} -d ${POSTGRES_DB:-papery}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-papery}", "-d", "${POSTGRES_DB:-papery}"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 15
       start_period: 10s
+```
 
+**Notes:**
+- `postgres:17-alpine` — minimal image, PG 17 for latest JSON/performance improvements
+- `pg_isready` is the standard health check — no extra packages needed
+- `unless-stopped` for dev (not `always`) — respects manual stops but survives reboots
+- Named volume `postgres_data` (not bind mount) — better performance on macOS, survives `docker compose down`
+- Performance params via `-c` flags — tunable per environment without custom `postgresql.conf`
+- `start_period` gives PG time to initialize before health checks begin
+
+### 2.2 Redis 7
+
+```yaml
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    environment:
-      REDISCLI_AUTH: ${REDIS_PASSWORD:-papery_dev_pass}  # suppresses -a warning in healthcheck
-    command: redis-server --requirepass ${REDIS_PASSWORD:-papery_dev_pass} --appendonly yes
-    volumes: ["./volumes/redis/data:/data"]
-    ports: ["${EXPOSE_REDIS_PORT:-6379}:6379"]
+    command: >
+      redis-server
+        --requirepass ${REDIS_PASSWORD:-papery_dev_secret}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --databases 4
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-papery_dev_secret} ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
+```
 
+**Notes:**
+- `--databases 4` — supports namespace isolation: db0=cache, db1=queue, db2=rate_limit, db3=token_blacklist (per INFRA-03)
+- `allkeys-lru` eviction for dev safety — prevents OOM
+- Health check uses `redis-cli ping` — simple and reliable
+
+### 2.3 MinIO
+
+```yaml
   minio:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-papery_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-papery_minio_pass}
-    volumes: ["./volumes/minio/data:/data"]
-    ports: ["${EXPOSE_MINIO_API_PORT:-9000}:9000", "${EXPOSE_MINIO_CONSOLE_PORT:-9001}:9001"]
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${EXPOSE_MINIO_PORT:-9000}:9000"
+      - "${EXPOSE_MINIO_CONSOLE_PORT:-9001}:9001"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 5s
 ```
 
-### Design Decisions
+**Notes:**
+- Two ports: 9000 (S3 API) + 9001 (web console for debugging uploads)
+- `mc ready local` is MinIO's official health check command (replaces deprecated `curl /minio/health/live`)
+- Default bucket creation handled by app startup or init script, not Docker entrypoint
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| PostgreSQL 17 | `postgres:17-alpine` | Latest stable, small image |
-| Redis 7 | `redis:7-alpine` | `--appendonly yes` for AOF durability |
-| MinIO | `minio/minio:latest` | S3-compatible, console UI at `:9001` |
-| Restart | `unless-stopped` | Survives reboot, stops on `down` |
-| Volumes | Bind mounts `./volumes/` | Easy to inspect/wipe, gitignored |
-| MinIO healthcheck | `curl /minio/health/live` | Built-in endpoint, no `mc` dependency needed |
-| Redis `REDISCLI_AUTH` | Env var | Avoids `-a password` warning in healthcheck |
-
----
-
-## 4. Health Checks
-
-| Service | Command | Notes |
-|---------|---------|-------|
-| PostgreSQL | `pg_isready -U <user> -d <db>` | Built-in, checks real readiness |
-| Redis | `redis-cli ping \| grep PONG` | Uses `REDISCLI_AUTH` env for auth |
-| MinIO | `curl -f localhost:9000/minio/health/live` | Official health endpoint |
-
-**Dev:** `interval: 5s`, `timeout: 3s`, `retries: 10`, `start_period: 10s`.
-**Production:** `interval: 30s`, `start_period: 30-60s`.
-
----
-
-## 5. Volume & Network
-
-**Volumes:** Bind mounts for dev (easy to inspect/wipe). `docker/volumes/` → `.gitignore`.
-Named volumes are better for production. Fresh start: `down -v && rm -rf docker/volumes/`.
-
-**Dev network:** Default bridge + exposed ports → backend connects via `localhost`.
-
-**Full stack network:** Custom bridge, services communicate by name:
+### 2.4 Volumes and Network
 
 ```yaml
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  default:
+    name: papery-dev
+```
+
+**Why named volumes over bind mounts:**
+- Better I/O performance on macOS (Docker Desktop volume caching)
+- Data persists across `docker compose down` (deleted only with `-v` flag)
+- No host filesystem permission issues
+- Named network `papery-dev` allows local backend to connect via `localhost:PORT`
+
+---
+
+## 3. docker-compose.yaml — Full Stack
+
+Extends middleware with application services. Uses YAML anchors for shared env:
+
+```yaml
+x-shared-env: &shared-backend-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: ${POSTGRES_USER:-papery}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-papery_dev_secret}
+  POSTGRES_DB: ${POSTGRES_DB:-papery}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-papery_dev_secret}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+  SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+  ENVIRONMENT: ${ENVIRONMENT:-local}
+
 services:
   api:
-    depends_on:
-      db:    { condition: service_healthy }
-      redis: { condition: service_healthy }
-      minio: { condition: service_healthy }
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      POSTGRES_HOST: db
-      REDIS_HOST: redis
-      MINIO_ENDPOINT: minio:9000
-    networks: [papery-net]
-networks:
-  papery-net:
-    driver: bridge
+      <<: *shared-backend-env
+      APP_MODE: api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "${EXPOSE_API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *shared-backend-env
+      APP_MODE: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Middleware services (same definitions as middleware yaml)
+  postgres: ...
+  redis: ...
+  minio: ...
 ```
 
-| Context | PostgreSQL | Redis | MinIO |
-|---------|-----------|-------|-------|
-| Local dev | `localhost:5432` | `localhost:6379` | `localhost:9000` |
-| Full stack | `db:5432` | `redis:6379` | `minio:9000` |
-
-**Dify pattern:** `condition: service_healthy` for hard deps. `required: false` for optional services (not needed Phase 1).
+**Key patterns from Dify:**
+- Same image for `api` and `worker` — differentiated by `APP_MODE` env var
+- `depends_on` with `condition: service_healthy` — ensures middleware is ready before app starts
+- YAML anchors (`x-shared-env`) eliminate env var duplication between api/worker
 
 ---
 
-## 6. Dockerfile.dev (Backend)
+## 4. Dockerfile.dev (Quick Backend Build)
 
-For full-stack containerized dev (NOT daily workflow — use `uv run` locally).
+Optimized for fast rebuilds during development:
 
 ```dockerfile
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
+
 WORKDIR /app
+
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install dependencies (cached layer — only rebuilds when lock changes)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Copy source (changes frequently — last layer)
 COPY . .
+
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Entrypoint script handles api vs worker mode
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-- `python:3.12-slim` not Alpine (avoids musl/wheel issues)
-- Deps cached separately for fast rebuilds
-- In full compose, bind-mount source + anonymous volume for `.venv`:
-  `volumes: ["../backend:/app", "/app/.venv"]`
+**Key differences from production Dockerfile:**
+- Single stage (no multi-stage) — faster builds
+- No non-root user setup — dev convenience
+- `--no-dev` still excludes test deps from image (tests run locally)
+- `uv sync --frozen` — uses lockfile exactly, fast install
 
 ---
 
-## 7. Env Variable Passing
+## 5. Environment Variable Flow
 
-| Mechanism | Scope | Use for |
-|-----------|-------|---------|
-| `env_file:` | Container env vars | Service credentials, tuning |
-| `${VAR:-default}` in YAML | Host-side substitution | Ports, paths, image tags |
-| `environment:` | Per-service overrides | Service-specific config |
-| YAML anchors (`x-shared-env: &name`) | Shared env blocks | Full-stack `api` + `worker` shared vars |
+```
+.env.example (root, committed)
+    │
+    ├── cp → .env (root, gitignored — backend reads this locally)
+    │
+    └── cp → docker/.env (gitignored — Docker Compose reads this)
+```
+
+**Docker Compose env resolution order:**
+1. `environment:` in compose file (highest priority)
+2. Shell environment variables
+3. `.env` file in the same directory as compose file
+4. Default values in `${VAR:-default}` syntax
+
+**Convention:** All Docker Compose vars use `${VAR:-default}` syntax so the stack works with zero config for dev (`docker compose up` just works).
 
 ---
 
-## 8. Implementation Checklist
+## 6. Dev Workflow Commands (Makefile targets)
 
-- [ ] `docker/docker-compose.middleware.yaml` — db, redis, minio
-- [ ] `docker/docker-compose.yaml` — full stack (middleware + api + worker + frontend)
-- [ ] `docker/middleware.env.example` + `docker/.env.example`
-- [ ] `backend/Dockerfile.dev` + `backend/Dockerfile` (multi-stage prod)
-- [ ] Add `docker/volumes/` to `.gitignore`
-- [ ] Makefile targets: `dev-up`, `dev-down`, `dev-reset`, `stack-up`, `stack-down`
+```makefile
+# Start middleware only (daily dev workflow)
+dev-middleware:
+	cp -n .env.example docker/.env 2>/dev/null || true
+	cd docker && docker compose -f docker-compose.middleware.yaml \
+		-p papery-middleware up -d
+
+# Start full stack
+dev-stack:
+	cp -n .env.example docker/.env 2>/dev/null || true
+	cd docker && docker compose -f docker-compose.yaml \
+		-p papery up -d
+
+# Teardown middleware (preserve data)
+dev-down:
+	cd docker && docker compose -f docker-compose.middleware.yaml \
+		-p papery-middleware down
+
+# Full clean (destroy volumes)
+dev-clean:
+	cd docker && docker compose -f docker-compose.middleware.yaml \
+		-p papery-middleware down -v
+
+# View middleware logs
+dev-logs:
+	cd docker && docker compose -f docker-compose.middleware.yaml \
+		-p papery-middleware logs -f
+```
+
+**Project name (`-p`):** Using explicit project names prevents conflicts with other Docker Compose projects and makes `docker ps` output clear.
+
+---
+
+## 7. Network Configuration
+
+### Dev mode (middleware containers + local backend)
+```
+┌─────────────────────────────────┐
+│  Docker: papery-dev network     │
+│  ┌──────────┐  ┌─────┐  ┌────┐ │
+│  │ postgres │  │redis│  │minio│ │
+│  │  :5432   │  │:6379│  │:9000│ │
+│  └────┬─────┘  └──┬──┘  └──┬─┘ │
+│       │           │        │    │
+├───────┼───────────┼────────┼────┤  Port mapping
+│       │           │        │    │  to localhost
+└───────┼───────────┼────────┼────┘
+        ▼           ▼        ▼
+   localhost:    localhost:  localhost:
+     5432         6379     9000/9001
+        │           │        │
+   ┌────┴───────────┴────────┴───┐
+   │  Local: backend (uvicorn)   │
+   │  localhost:8000              │
+   └─────────────────────────────┘
+```
+
+Backend connects to middleware via `localhost:PORT` (mapped ports). No Docker networking complexity.
+
+### Full stack mode (everything in Docker)
+Services connect via Docker DNS names (`postgres`, `redis`, `minio`) on the default network. No port mapping needed for inter-service communication — only expose ports for external access (API, MinIO console).
+
+---
+
+## 8. Implementation Recommendations
+
+1. **Start with middleware-only** — get `make dev-middleware` working first, add full stack later
+2. **Use named volumes** — never bind-mount database data directories on macOS
+3. **Health checks on everything** — `depends_on.condition: service_healthy` prevents race conditions
+4. **`start_period` on slow services** — PostgreSQL and MinIO need initialization time
+5. **Explicit project names** — `papery-middleware` vs `papery` distinguishes dev vs full stack
+6. **Default passwords in compose** — safe for dev, production overrides via `.env`
+7. **MinIO bucket init** — handle in app startup code (check-and-create pattern), not Docker entrypoint scripts
+8. **Don't over-tune** — dev environment defaults work fine; save PostgreSQL tuning for production
+
+---
+
+## 9. Files to Create (Phase 1)
+
+| File | Purpose |
+|------|---------|
+| `docker/docker-compose.middleware.yaml` | PostgreSQL + Redis + MinIO for dev |
+| `docker/docker-compose.yaml` | Full stack (api + worker + middleware) |
+| `backend/Dockerfile.dev` | Quick dev build (single stage) |
+| `backend/Dockerfile` | Production build (multi-stage, slim) |
+| `.env.example` | All env vars with safe defaults |
+| `Makefile` | Dev workflow commands |
+
+---
+
+*Research complete. Scope: Docker Compose split setup only.*
+*Does NOT cover: PostgreSQL internals, Redis internals, MinIO SDK, config validation, FastAPI app setup.*

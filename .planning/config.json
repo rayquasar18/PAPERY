@@ -1,0 +1,27 @@
+{
+  "mode": "interactive",
+  "granularity": "fine",
+  "parallelization": true,
+  "commit_docs": true,
+  "model_profile": "quality",
+  "model_overrides": {
+    "gsd-planner": "opus",
+    "gsd-roadmapper": "opus",
+    "gsd-executor": "opus",
+    "gsd-phase-researcher": "opus",
+    "gsd-project-researcher": "opus",
+    "gsd-research-synthesizer": "sonnet",
+    "gsd-debugger": "opus",
+    "gsd-codebase-mapper": "sonnet",
+    "gsd-verifier": "sonnet",
+    "gsd-plan-checker": "sonnet",
+    "gsd-integration-checker": "sonnet",
+    "gsd-nyquist-auditor": "sonnet"
+  },
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "nyquist_validation": true
+  }
+}
