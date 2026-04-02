@@ -2,8 +2,8 @@
 plan: "04"
 title: "Redis & MinIO Extensions"
 phase: 1
-wave: 2
-depends_on: ["01"]
+wave: 3
+depends_on: ["01", "03"]
 requirements:
   - INFRA-03
   - INFRA-04
@@ -20,6 +20,9 @@ estimated_tasks: 3
 ## Goal
 
 Implement Redis extension with 3 isolated namespace clients (cache db=0, queue db=1, rate_limit db=2) and MinIO extension with presigned URL generation. Both follow the same init/shutdown pattern as ext_database. Wire both into FastAPI lifespan.
+
+> **Note:** This plan runs in wave 3 (after PLAN-03) because Task 4.3 modifies `main.py`,
+> which PLAN-03 Task 3.4 also modifies. Sequential execution avoids file conflicts.
 
 ---
 
@@ -278,7 +281,7 @@ async def upload_file(
     if client is None:
         raise RuntimeError("MinIO not initialized. Call ext_minio.init() first.")
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     stream = io.BytesIO(data)
 
     await loop.run_in_executor(
@@ -307,9 +310,11 @@ async def upload_file(
 - `backend/app/extensions/ext_minio.py` contains `def presigned_put_url(`
 - `backend/app/extensions/ext_minio.py` contains `client.presigned_put_object(`
 - `backend/app/extensions/ext_minio.py` contains `async def upload_file(`
+- `backend/app/extensions/ext_minio.py` contains `asyncio.get_running_loop()`
 - `backend/app/extensions/ext_minio.py` contains `loop.run_in_executor(`
 - `backend/app/extensions/ext_minio.py` contains `timedelta(seconds=expires or settings.MINIO_PRESIGNED_GET_EXPIRY)`
 - `backend/app/extensions/ext_minio.py` contains `timedelta(seconds=expires or settings.MINIO_PRESIGNED_PUT_EXPIRY)`
+- `backend/app/extensions/ext_minio.py` does NOT contain `asyncio.get_event_loop()` (deprecated in Python 3.12)
 </acceptance_criteria>
 
 ---
@@ -384,5 +389,5 @@ After all tasks complete:
 - [ ] `presigned_get_url()` returns signed URL with configurable expiry (default 3600s)
 - [ ] `presigned_put_url()` returns signed URL with configurable expiry (default 1800s)
 - [ ] MinIO `init()`/`shutdown()` are sync (no `await`) — SDK is synchronous
-- [ ] `upload_file()` uses `run_in_executor` for async safety
+- [ ] `upload_file()` uses `run_in_executor` with `asyncio.get_running_loop()` for async safety
 - [ ] Lifespan startup order: database → redis → minio; shutdown: minio → redis → database

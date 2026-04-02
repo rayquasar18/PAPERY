@@ -158,6 +158,7 @@ Create `backend/app/extensions/ext_database.py`:
 """Database extension — async SQLAlchemy engine + session factory."""
 import logging
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -195,9 +196,7 @@ async def init() -> None:
 
     # Verify connection
     async with engine.begin() as conn:
-        await conn.execute(
-            __import__("sqlalchemy").text("SELECT 1")
-        )
+        await conn.execute(text("SELECT 1"))
     logger.info("Database engine initialized: %s", settings.POSTGRES_HOST)
 
 
@@ -225,6 +224,7 @@ async def get_session() -> AsyncSession:
 </action>
 
 <acceptance_criteria>
+- `backend/app/extensions/ext_database.py` contains `from sqlalchemy import text`
 - `backend/app/extensions/ext_database.py` contains `create_async_engine(`
 - `backend/app/extensions/ext_database.py` contains `pool_size=settings.POSTGRES_POOL_SIZE`
 - `backend/app/extensions/ext_database.py` contains `pool_pre_ping=True`
@@ -235,6 +235,8 @@ async def get_session() -> AsyncSession:
 - `backend/app/extensions/ext_database.py` contains `await engine.dispose()`
 - `backend/app/extensions/ext_database.py` contains `echo=settings.DEBUG`
 - `backend/app/extensions/ext_database.py` contains `settings.ASYNC_DATABASE_URI`
+- `backend/app/extensions/ext_database.py` contains `await conn.execute(text("SELECT 1"))`
+- `backend/app/extensions/ext_database.py` does NOT contain `__import__("sqlalchemy")`
 </acceptance_criteria>
 
 ---
@@ -505,6 +507,7 @@ After all tasks complete:
 - [ ] `UUIDMixin` provides `uuid` column with `UUID(as_uuid=True)`, `unique=True`, `index=True` (INFRA-14)
 - [ ] `TimestampMixin` uses `server_default=func.now()` (not Python-side `default`)
 - [ ] `SoftDeleteMixin` uses `deleted_at` timestamp with `is_deleted` property (INFRA-15)
+- [ ] `ext_database.py` uses `from sqlalchemy import text` (proper import, no `__import__` anti-pattern)
 - [ ] `ext_database.py` creates engine with `expire_on_commit=False` and `pool_pre_ping=True`
 - [ ] `get_session()` is an async generator suitable for FastAPI `Depends()`
 - [ ] Alembic `env.py` imports `Base` from barrel (`app.models`) to discover all models

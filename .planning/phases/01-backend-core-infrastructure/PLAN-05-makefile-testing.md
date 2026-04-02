@@ -2,7 +2,7 @@
 plan: "05"
 title: "Makefile Automation & Testing Foundation"
 phase: 1
-wave: 3
+wave: 4
 depends_on: ["01", "02", "03", "04"]
 requirements:
   - INFRA-01
@@ -28,6 +28,9 @@ estimated_tasks: 4
 ## Goal
 
 Create the root-level Makefile for development automation (dev-setup, lint, test, migrate, clean) and implement the testing foundation: pytest conftest with shared fixtures, and smoke tests that verify the config system, models/mixins, and FastAPI app startup. This is the integration layer that proves all prior plans work together.
+
+> **Note:** Wave updated to 4 (after PLAN-04 wave 3) to ensure all extensions are wired
+> before testing fixtures reference them.
 
 ---
 
@@ -143,67 +146,10 @@ help:  ## Show this help message
 
 ---
 
-### Task 5.2 — Create pytest conftest.py with shared fixtures
+### Task 5.2 — Create config and model unit tests (INFRA-09, INFRA-14, INFRA-15)
 
-<read_first>
-- .planning/phases/01-backend-core-infrastructure/01-RESEARCH.md (section 9: Testing Strategy)
-- .planning/phases/01-backend-core-infrastructure/01-VALIDATION.md (Wave 0 Requirements)
-- backend/pyproject.toml (pytest config, created in Plan 01)
-- backend/app/main.py (FastAPI app, created in Plan 01, wired in Plan 03/04)
-- backend/app/core/config/__init__.py (settings singleton)
-</read_first>
-
-<action>
-Create `backend/tests/conftest.py` with shared test fixtures:
-
-```python
-"""Shared pytest fixtures for all tests."""
-import os
-
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-# Ensure test environment before any app imports
-os.environ.setdefault("ENVIRONMENT", "local")
-os.environ.setdefault("DEBUG", "true")
-os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-characters-long!!")
-
-
-@pytest.fixture()
-def anyio_backend():
-    """Use asyncio as the async backend for tests."""
-    return "asyncio"
-
-
-@pytest.fixture()
-async def async_client():
-    """Create an async test client for the FastAPI app.
-
-    NOTE: This fixture imports app lazily to allow env var overrides
-    to take effect before settings are loaded.
-    """
-    from app.main import app
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        yield client
-```
-</action>
-
-<acceptance_criteria>
-- `backend/tests/conftest.py` contains `import pytest`
-- `backend/tests/conftest.py` contains `from httpx import ASGITransport, AsyncClient`
-- `backend/tests/conftest.py` contains `os.environ.setdefault("ENVIRONMENT", "local")`
-- `backend/tests/conftest.py` contains `os.environ.setdefault("SECRET_KEY",`
-- `backend/tests/conftest.py` contains `async def async_client()`
-- `backend/tests/conftest.py` contains `ASGITransport(app=app)`
-- `backend/tests/conftest.py` contains `base_url="http://testserver"`
-- `backend/tests/conftest.py` contains `from app.main import app`
-</acceptance_criteria>
-
----
-
-### Task 5.3 — Create config and model unit tests (INFRA-09, INFRA-14, INFRA-15)
+> **Note:** This task does NOT create conftest.py. The conftest.py is created once in Task 5.3
+> to avoid double-write conflicts.
 
 <read_first>
 - backend/app/core/config/__init__.py (AppSettings with validate_startup)
@@ -450,47 +396,86 @@ class TestModelBarrelImports:
 
 ---
 
-### Task 5.4 — Create FastAPI app smoke test (INFRA-01)
+### Task 5.3 — Create pytest conftest.py with shared fixtures and FastAPI app smoke test (INFRA-01)
+
+> **Note:** This single task creates both conftest.py AND test_app.py. The conftest.py includes
+> mock patches for all extensions so tests can run without Docker services.
+> Async tests use NO markers — `asyncio_mode = "auto"` in pyproject.toml auto-detects them.
 
 <read_first>
 - backend/app/main.py (FastAPI app with lifespan, health endpoint)
 - backend/app/api/v1/health.py (health check endpoint returning status JSON)
-- backend/tests/conftest.py (async_client fixture, created in Task 5.2)
+- backend/pyproject.toml (pytest config with asyncio_mode = "auto")
+- backend/app/extensions/ext_database.py (created in Plan 03)
+- backend/app/extensions/ext_redis.py (created in Plan 04)
+- backend/app/extensions/ext_minio.py (created in Plan 04)
 </read_first>
 
 <action>
+Create `backend/tests/conftest.py` with shared test fixtures (mock-patched for no-Docker testing):
+
+```python
+"""Shared pytest fixtures for all tests."""
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+# Ensure test environment before any app imports
+os.environ.setdefault("ENVIRONMENT", "local")
+os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-characters-long!!")
+
+
+@pytest.fixture()
+async def async_client():
+    """Create an async test client for the FastAPI app.
+
+    Patches extension init/shutdown to avoid requiring real services.
+    """
+    with (
+        patch("app.extensions.ext_database.init", new_callable=AsyncMock),
+        patch("app.extensions.ext_database.shutdown", new_callable=AsyncMock),
+        patch("app.extensions.ext_redis.init", new_callable=AsyncMock),
+        patch("app.extensions.ext_redis.shutdown", new_callable=AsyncMock),
+        patch("app.extensions.ext_minio.init", new_callable=MagicMock),
+        patch("app.extensions.ext_minio.shutdown", new_callable=MagicMock),
+    ):
+        from app.main import app
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            yield client
+```
+
 Create `backend/tests/test_app.py`:
 
 ```python
 """Smoke tests for FastAPI app startup and health endpoint (INFRA-01)."""
-import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 
 class TestHealthEndpoint:
     """Test the /api/v1/health endpoint."""
 
-    @pytest.mark.anyio
     async def test_health_returns_200(self, async_client: AsyncClient):
         """GET /api/v1/health should return 200 OK."""
         response = await async_client.get("/api/v1/health")
         assert response.status_code == 200
 
-    @pytest.mark.anyio
     async def test_health_returns_status_ok(self, async_client: AsyncClient):
         """Health response should contain status: ok."""
         response = await async_client.get("/api/v1/health")
         data = response.json()
         assert data["status"] == "ok"
 
-    @pytest.mark.anyio
     async def test_health_returns_app_name(self, async_client: AsyncClient):
         """Health response should contain app name PAPERY."""
         response = await async_client.get("/api/v1/health")
         data = response.json()
         assert data["app"] == "PAPERY"
 
-    @pytest.mark.anyio
     async def test_health_returns_version(self, async_client: AsyncClient):
         """Health response should contain version string."""
         response = await async_client.get("/api/v1/health")
@@ -498,7 +483,6 @@ class TestHealthEndpoint:
         assert "version" in data
         assert data["version"] == "0.1.0"
 
-    @pytest.mark.anyio
     async def test_health_returns_environment(self, async_client: AsyncClient):
         """Health response should contain environment field."""
         response = await async_client.get("/api/v1/health")
@@ -539,58 +523,24 @@ class TestAppConfiguration:
         # FastAPI wraps middleware, check via app.user_middleware
         assert any("CORS" in str(m) for m in app.user_middleware)
 ```
-
-NOTE: The async_client fixture must handle the fact that lifespan tries to connect to real services (database, redis, minio). For the smoke test to work without Docker, the test should either:
-1. Mock the extensions in conftest, OR
-2. Skip lifespan-dependent tests when services are unavailable.
-
-Update `backend/tests/conftest.py` to add a mock-based client fixture that patches extensions:
-
-```python
-"""Shared pytest fixtures for all tests."""
-import os
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-# Ensure test environment before any app imports
-os.environ.setdefault("ENVIRONMENT", "local")
-os.environ.setdefault("DEBUG", "true")
-os.environ.setdefault("SECRET_KEY", "test-secret-key-minimum-32-characters-long!!")
-
-
-@pytest.fixture()
-def anyio_backend():
-    """Use asyncio as the async backend for tests."""
-    return "asyncio"
-
-
-@pytest.fixture()
-async def async_client():
-    """Create an async test client for the FastAPI app.
-
-    Patches extension init/shutdown to avoid requiring real services.
-    """
-    with (
-        patch("app.extensions.ext_database.init", new_callable=AsyncMock),
-        patch("app.extensions.ext_database.shutdown", new_callable=AsyncMock),
-        patch("app.extensions.ext_redis.init", new_callable=AsyncMock),
-        patch("app.extensions.ext_redis.shutdown", new_callable=AsyncMock),
-        patch("app.extensions.ext_minio.init", new_callable=MagicMock),
-        patch("app.extensions.ext_minio.shutdown", new_callable=MagicMock),
-    ):
-        from app.main import app
-
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            yield client
-```
-
-This replaces the earlier simpler conftest.py — the full version with mock patches is the one to write.
 </action>
 
 <acceptance_criteria>
+- `backend/tests/conftest.py` contains `import pytest`
+- `backend/tests/conftest.py` contains `from httpx import ASGITransport, AsyncClient`
+- `backend/tests/conftest.py` contains `os.environ.setdefault("ENVIRONMENT", "local")`
+- `backend/tests/conftest.py` contains `os.environ.setdefault("SECRET_KEY",`
+- `backend/tests/conftest.py` contains `async def async_client()`
+- `backend/tests/conftest.py` contains `ASGITransport(app=app)`
+- `backend/tests/conftest.py` contains `base_url="http://testserver"`
+- `backend/tests/conftest.py` contains `from app.main import app`
+- `backend/tests/conftest.py` contains `patch("app.extensions.ext_database.init"`
+- `backend/tests/conftest.py` contains `patch("app.extensions.ext_redis.init"`
+- `backend/tests/conftest.py` contains `patch("app.extensions.ext_minio.init"`
+- `backend/tests/conftest.py` contains `new_callable=AsyncMock`
+- `backend/tests/conftest.py` contains `new_callable=MagicMock`
+- `backend/tests/conftest.py` does NOT contain `anyio_backend` fixture
+- `backend/tests/conftest.py` does NOT contain `@pytest.mark.anyio`
 - `backend/tests/test_app.py` contains `class TestHealthEndpoint:`
 - `backend/tests/test_app.py` contains `async def test_health_returns_200`
 - `backend/tests/test_app.py` contains `assert response.status_code == 200`
@@ -601,11 +551,7 @@ This replaces the earlier simpler conftest.py — the full version with mock pat
 - `backend/tests/test_app.py` contains `def test_app_title_is_papery`
 - `backend/tests/test_app.py` contains `def test_app_has_health_route`
 - `backend/tests/test_app.py` contains `"/api/v1/health" in routes`
-- `backend/tests/conftest.py` contains `patch("app.extensions.ext_database.init"`
-- `backend/tests/conftest.py` contains `patch("app.extensions.ext_redis.init"`
-- `backend/tests/conftest.py` contains `patch("app.extensions.ext_minio.init"`
-- `backend/tests/conftest.py` contains `new_callable=AsyncMock`
-- `backend/tests/conftest.py` contains `new_callable=MagicMock`
+- `backend/tests/test_app.py` does NOT contain `@pytest.mark.anyio` (asyncio_mode = "auto" handles it)
 </acceptance_criteria>
 
 ---
@@ -620,6 +566,7 @@ After all tasks complete:
 5. `cd backend && uv run pytest tests/test_models.py -v` — all model tests green
 6. `cd backend && uv run pytest tests/test_app.py -v` — all app tests green
 7. `make type-check` runs mypy without blocking errors
+8. `make test-cov` runs tests with coverage (pytest-cov is a dev dependency)
 
 ## must_haves
 
@@ -627,7 +574,10 @@ After all tasks complete:
 - [ ] `make dev-setup` chains prepare-docker + prepare-api (INFRA-11)
 - [ ] `make lint` runs ruff format + ruff check --fix
 - [ ] `make test` runs pytest on all tests
+- [ ] `make test-cov` works because `pytest-cov` is in dev dependencies (PLAN-01)
 - [ ] `backend/tests/conftest.py` patches extensions to avoid requiring real services
+- [ ] `backend/tests/conftest.py` does NOT have `anyio_backend` fixture (not needed with `asyncio_mode = "auto"`)
+- [ ] Async tests use NO `@pytest.mark.anyio` or `@pytest.mark.asyncio` markers (auto-detected)
 - [ ] Config tests verify: default loading, ASYNC_DATABASE_URI computation, special chars in password, CORS CSV parsing, staging SECRET_KEY rejection, production SMTP_HOST requirement (INFRA-09)
 - [ ] Model tests verify: Base is abstract, UUIDMixin has uuid attribute, SoftDeleteMixin.is_deleted property behavior (INFRA-14, INFRA-15)
 - [ ] App smoke tests verify: health endpoint returns 200 with correct JSON, app has CORS middleware, routes registered (INFRA-01)

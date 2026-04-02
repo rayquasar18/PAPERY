@@ -87,6 +87,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0",
     "httpx>=0.28.0",
     "fakeredis[aioredis]>=2.25.0",
     "ruff>=0.8.0",
@@ -149,6 +150,7 @@ Also create `backend/.python-version` with content: `3.12`
 - `backend/pyproject.toml` contains `"fastcrud>=0.16.0"` in dependencies
 - `backend/pyproject.toml` contains `package = false` under `[tool.uv]`
 - `backend/pyproject.toml` contains `[dependency-groups]` section with `dev` group
+- `backend/pyproject.toml` contains `"pytest-cov>=6.0"` in dev dependencies
 - `backend/pyproject.toml` contains `"B008"` in ruff ignore list
 - `backend/pyproject.toml` contains `plugins = ["pydantic.mypy"]` under `[tool.mypy]`
 - `backend/pyproject.toml` contains `asyncio_mode = "auto"` under `[tool.pytest.ini_options]`
@@ -700,7 +702,7 @@ After all tasks complete:
 
 ## must_haves
 
-- [ ] `backend/pyproject.toml` exists with all production and dev dependencies
+- [ ] `backend/pyproject.toml` exists with all production and dev dependencies (including `pytest-cov`)
 - [ ] `backend/app/core/config/__init__.py` defines `AppSettings` class composing all config modules
 - [ ] `settings = AppSettings()` singleton instantiated at module level
 - [ ] Startup validation rejects placeholder `SECRET_KEY` in non-local environments
