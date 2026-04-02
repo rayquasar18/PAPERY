@@ -57,7 +57,7 @@ progress:
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
 | 1 | Backend Core Infrastructure | 8 | ✅ Complete (5/5 plans) |
-| 2 | Error Handling, API Structure & Health | 5 | 🔄 In Progress (02-02 ✅) |
+| 2 | Error Handling, API Structure & Health | 5 | 🔄 In Progress (02-01 ✅ \| 02-02 ✅) |
 | 3 | Authentication — Core Flows | 6 | ⬜ Not started |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
 | 5 | User Profile & Account Management | 3 | ⬜ Not started |
@@ -88,7 +88,9 @@ progress:
 | MinIO init/shutdown are sync (no await) | 1 | MinIO SDK is urllib3-based; only upload_file() needs run_in_executor | 2026-04-02 |
 | asyncio.get_running_loop() for upload_file() | 1 | get_event_loop() is deprecated in Python 3.10+, raises warnings in 3.12 | 2026-04-02 |
 | asyncio_mode=auto eliminates test markers | 1 | pytest-asyncio auto mode detects async tests; no @pytest.mark.asyncio needed | 2026-04-02 |
-| per-file-ignores S101/S106/F841 for tests | 1 | Standard ruff config; assert/hardcoded passwords are intentional in test files | 2026-04-02 |
+| Class-level status_code/error_code defaults on PaperyError | 2 | Subclasses override at class level; constructor allows per-instance override | 2026-04-03 |
+| No FastAPI imports in domain exceptions | 2 | Inner layers (CRUD, services) stay decoupled from HTTP framework (D-09) | 2026-04-03 |
+| detail: Any | None in PaperyError and ErrorResponse | 2 | Allows structured error data for debugging without schema rigidity | 2026-04-03 |
 
 ---
 
@@ -117,6 +119,7 @@ None currently.
 ---
 | Phase 01 P04 | 14min | 3 tasks | 3 files |
 | Phase 01 P05 | 18min | 3 tasks | 6 files |
+| Phase 02 P01 | ~5min | 4 tasks | 4 files |
 | Phase 02 P02 | 5min | 2 tasks | 2 files |
 
 ## Notes
