@@ -1,6 +1,5 @@
 """Tests for SQLAlchemy base models and mixins (INFRA-14, INFRA-15)."""
-import uuid as uuid_pkg
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
@@ -69,7 +68,7 @@ class TestSoftDeleteMixin:
             pass
 
         obj = FakeModel()
-        obj.deleted_at = datetime.now(tz=timezone.utc)
+        obj.deleted_at = datetime.now(tz=UTC)
         assert obj.is_deleted is True
 
     def test_is_deleted_is_property(self):
