@@ -57,8 +57,8 @@ Requirements for initial release — SaaS foundation. Each maps to roadmap phase
 
 - [ ] **INFRA-01**: FastAPI backend with layered architecture (Router → Service → CRUD → Schema → Model)
 - [ ] **INFRA-02**: PostgreSQL 16+ with SQLAlchemy 2.0 async ORM and Alembic migrations (committed to git)
-- [ ] **INFRA-03**: Redis 7+ with namespace isolation (cache db=0, queue db=1, rate_limit db=2)
-- [ ] **INFRA-04**: MinIO file storage with presigned URL support
+- [x] **INFRA-03**: Redis 7+ with namespace isolation (cache db=0, queue db=1, rate_limit db=2)
+- [x] **INFRA-04**: MinIO file storage with presigned URL support
 - [ ] **INFRA-05**: ARQ background task worker for async processing
 - [ ] **INFRA-06**: Structured error handling with custom exception hierarchy and consistent API error format
 - [ ] **INFRA-07**: API versioning at /api/v1/ with OpenAPI auto-documentation
