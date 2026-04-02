@@ -12,7 +12,11 @@ Users can work with any document intelligently — ask questions, get accurate c
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Backend infrastructure with best practices (FastAPI, async, layered architecture, migrations) — Validated in Phase 1: Backend Core Infrastructure
+- [x] Docker Compose development environment (PostgreSQL, Redis, MinIO, backend, worker) — Validated in Phase 1: Backend Core Infrastructure
+- [x] File storage integration (MinIO/S3-compatible) for document uploads — Validated in Phase 1: Backend Core Infrastructure
+- [x] API versioning, structured error handling — Validated in Phase 2: Error Handling, API Structure & Health
+- [x] Deployment-ready configuration (production Docker image) — Validated in Phase 2: Error Handling, API Structure & Health
 
 ### Active
 
@@ -20,13 +24,10 @@ Users can work with any document intelligently — ask questions, get accurate c
 - [ ] User tier system with role-based access control (admin, regular users, tier-based permissions)
 - [ ] Admin panel for managing users, tiers, rate limits, and system configuration
 - [ ] Project system (CRUD, ACL-based access control per resource)
-- [ ] Backend infrastructure with best practices (FastAPI, async, layered architecture, migrations)
 - [ ] Frontend infrastructure with best practices (Next.js 15, App Router, i18n, Zustand, Zod validation)
-- [ ] API versioning, rate limiting, structured error handling
-- [ ] File storage integration (MinIO/S3-compatible) for document uploads
+- [ ] Rate limiting (middleware + tier-based enforcement)
 - [ ] Background task processing (ARQ worker)
-- [ ] Docker Compose development environment (PostgreSQL, Redis, MinIO, backend, worker)
-- [ ] Deployment-ready configuration (Vercel for frontend, VPS/Docker for backend)
+- [ ] Deployment-ready configuration (Vercel for frontend)
 - [ ] Integration point for external AI Service (QuasarFlow API) — stub/interface ready
 
 ### Out of Scope
@@ -98,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after initialization*
+*Last updated: 2026-04-03 after Phase 2 completion*
