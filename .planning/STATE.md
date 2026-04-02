@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: executing
-stopped_at: Phase 2, Plan 02-02 complete (RequestIDMiddleware)
+stopped_at: Phase 2, Plan 02-03 complete (router aggregator, exception handlers, /ready, CORS guard)
 last_updated: "2026-04-03T00:00:00.000Z"
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State: PAPERY
@@ -57,7 +57,7 @@ progress:
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
 | 1 | Backend Core Infrastructure | 8 | ✅ Complete (5/5 plans) |
-| 2 | Error Handling, API Structure & Health | 5 | 🔄 In Progress (02-01 ✅ \| 02-02 ✅) |
+| 2 | Error Handling, API Structure & Health | 5 | 🔄 In Progress (02-01 ✅ \| 02-02 ✅ \| 02-03 ✅) |
 | 3 | Authentication — Core Flows | 6 | ⬜ Not started |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
 | 5 | User Profile & Account Management | 3 | ⬜ Not started |
@@ -91,6 +91,10 @@ progress:
 | Class-level status_code/error_code defaults on PaperyError | 2 | Subclasses override at class level; constructor allows per-instance override | 2026-04-03 |
 | No FastAPI imports in domain exceptions | 2 | Inner layers (CRUD, services) stay decoupled from HTTP framework (D-09) | 2026-04-03 |
 | detail: Any | None in PaperyError and ErrorResponse | 2 | Allows structured error data for debugging without schema rigidity | 2026-04-03 |
+| _get_request_id() helper with "unknown" fallback | 2 | Safe for pre-middleware edge cases; exception handlers always have a request_id | 2026-04-03 |
+| HTTP status → error_code mapping dict in http_exception_handler | 2 | Readable, extensible, avoids magic strings inline in handler logic | 2026-04-03 |
+| asyncio.timeout(2.5) per service in /ready (not shared) | 2 | Each service gets full budget; total worst-case 7.5s acceptable for readiness probe | 2026-04-03 |
+| CORS wildcard guard uses "*" in self.CORS_ORIGINS | 2 | Handles ["*"] JSON list format that pydantic_settings produces from env vars | 2026-04-03 |
 
 ---
 
@@ -102,9 +106,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Phase 2, Plan 02-02 complete (RequestIDMiddleware)
-**Resume file:** .planning/phases/02-error-handling-api-structure-health/02-02-SUMMARY.md
-**Next action:** Execute Plan 02-03 (next plan in Phase 2)
+**Stopped at:** Phase 2, Plan 02-03 complete (router aggregator, exception handlers, /ready, CORS guard)
+**Resume file:** .planning/phases/02-error-handling-api-structure-health/02-03-SUMMARY.md
+**Next action:** Execute Plan 02-04 (next plan in Phase 2, if exists) or phase transition
 
 ---
 
@@ -121,6 +125,7 @@ None currently.
 | Phase 01 P05 | 18min | 3 tasks | 6 files |
 | Phase 02 P01 | ~5min | 4 tasks | 4 files |
 | Phase 02 P02 | 5min | 2 tasks | 2 files |
+| Phase 02 P03 | 10min | 4 tasks | 4 files |
 
 ## Notes
 
