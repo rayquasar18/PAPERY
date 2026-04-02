@@ -45,6 +45,8 @@
 
 **Why here:** Before building any business endpoints (auth, projects), the API structure, error format, and operational endpoints must be defined. All subsequent endpoints will use these patterns.
 
+**Status:** 🔄 In Progress — Plan 02-02 ✅ (RequestIDMiddleware)
+
 ### Requirements
 
 | ID | Requirement |
@@ -323,4 +325,4 @@ Phase 1 (Backend Core)
 ---
 
 *Roadmap created: 2026-04-01*
-*Last updated: 2026-04-02*
+*Last updated: 2026-04-03 — Plan 02-02 complete (RequestIDMiddleware)*
