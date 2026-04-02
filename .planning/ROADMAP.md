@@ -45,7 +45,8 @@
 
 **Why here:** Before building any business endpoints (auth, projects), the API structure, error format, and operational endpoints must be defined. All subsequent endpoints will use these patterns.
 
-**Status:** 🔄 In Progress — Plan 02-01 ✅ (Exception Hierarchy & ErrorResponse) | Plan 02-02 ✅ (RequestIDMiddleware) | Plan 02-03 ✅ (Router Aggregator, Exception Handlers, /ready, CORS Guard)
+**Status:** ✅ Complete — 4/4 plans complete (2026-04-03)
+**Plans progress:** 02-01 ✅ Exception Hierarchy & ErrorResponse | 02-02 ✅ RequestIDMiddleware | 02-03 ✅ Router Aggregator, Exception Handlers, /ready, CORS Guard | 02-04 ✅ Production Dockerfile, Dependencies & Tests
 
 ### Requirements
 
@@ -325,4 +326,4 @@ Phase 1 (Backend Core)
 ---
 
 *Roadmap created: 2026-04-01*
-*Last updated: 2026-04-03 — Plan 02-01 complete (Exception Hierarchy & ErrorResponse), Plan 02-02 complete (RequestIDMiddleware), Plan 02-03 complete (Router Aggregator, Exception Handlers, /ready, CORS Guard)*
+*Last updated: 2026-04-03 — Phase 2 complete (02-01 through 02-04 all done)*
