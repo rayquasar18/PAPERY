@@ -11,8 +11,8 @@
 
 **Goal:** Establish the foundational backend skeleton — project structure, database, Redis, MinIO connections, configuration system, Docker Compose dev environment, and core patterns (dual-ID, soft delete, layered architecture).
 
-**Status:** 🔄 In Progress — 1/5 plans complete (2026-04-02)
-**Plans progress:** 01-01 ✅ Project Scaffold & Python Tooling | 01-02 ⬜ | 01-03 ⬜ | 01-04 ⬜ | 01-05 ⬜
+**Status:** 🔄 In Progress — 3/5 plans complete (2026-04-02)
+**Plans progress:** 01-01 ✅ Project Scaffold & Python Tooling | 01-02 ✅ Docker Compose Dev Environment | 01-03 ✅ Database Layer, Models & Alembic | 01-04 ⬜ | 01-05 ⬜
 
 **Why first:** Every backend feature depends on these primitives. Database models, configuration, Docker stack, and architectural patterns must be correct before any business logic is built. Getting these wrong means rebuilding from the foundation.
 

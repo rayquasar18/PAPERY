@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-04-02
 **Current phase:** Phase 1 — Backend Core Infrastructure
-**Status:** IN PROGRESS (Plan 01/05 complete)
+**Status:** IN PROGRESS (Plan 03/05 complete)
 
 ---
 
@@ -12,25 +12,25 @@
 
 **Goal:** Establish the foundational backend skeleton — project structure, database, Redis, MinIO connections, configuration system, Docker Compose dev environment, and core patterns (dual-ID, soft delete, layered architecture).
 
-**Status:** IN PROGRESS — Plan 1 of 5 complete
-**Plans:** 01-01 ✅ | 01-02 ⬜ | 01-03 ⬜ | 01-04 ⬜ | 01-05 ⬜
+**Status:** IN PROGRESS — Plan 3 of 5 complete
+**Plans:** 01-01 ✅ | 01-02 ✅ | 01-03 ✅ | 01-04 ⬜ | 01-05 ⬜
 
 | Requirement | Status | Notes |
 |------------|--------|-------|
 | INFRA-01 | ✅ Complete | FastAPI layered architecture scaffold |
-| INFRA-02 | ⬜ Not started | PostgreSQL + SQLAlchemy + Alembic (Plan 02) |
-| INFRA-03 | ⬜ Not started | Redis namespace isolation (Plan 03) |
-| INFRA-04 | ⬜ Not started | MinIO file storage (Plan 03) |
+| INFRA-02 | ✅ Complete | PostgreSQL + SQLAlchemy async + Alembic (Plan 03) |
+| INFRA-03 | ⬜ Not started | Redis namespace isolation (Plan 04) |
+| INFRA-04 | ⬜ Not started | MinIO file storage (Plan 04) |
 | INFRA-09 | ✅ Complete | Pydantic Settings configuration system |
-| INFRA-11 | ⬜ Not started | Docker Compose dev environment (Plan 04) |
-| INFRA-14 | ⬜ Not started | Dual ID strategy (Plan 02) |
-| INFRA-15 | ⬜ Not started | Soft delete mixin (Plan 02) |
+| INFRA-11 | ✅ Complete | Docker Compose dev environment (Plan 02) |
+| INFRA-14 | ✅ Complete | Dual ID strategy — Base BigInteger PK + UUIDMixin (Plan 03) |
+| INFRA-15 | ✅ Complete | Soft delete mixin — SoftDeleteMixin with deleted_at (Plan 03) |
 
 ### Success Criteria
 
 - [ ] `docker compose up` starts all services and backend responds to requests
 - [x] FastAPI app starts and health endpoint responds correctly
-- [ ] Sample model with dual-ID + soft delete works correctly
+- [x] Sample model with dual-ID + soft delete works correctly
 - [ ] Alembic migrations generate and apply successfully
 - [ ] Redis three-namespace isolation verified
 - [ ] MinIO presigned upload URL works
@@ -41,7 +41,7 @@
 
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
-| 1 | Backend Core Infrastructure | 8 | 🔄 In Progress (2/8 done) |
+| 1 | Backend Core Infrastructure | 8 | 🔄 In Progress (5/8 done) |
 | 2 | Error Handling, API Structure & Health | 5 | ⬜ Not started |
 | 3 | Authentication — Core Flows | 6 | ⬜ Not started |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
@@ -65,6 +65,10 @@
 | Three separate Redis DB clients (not SELECT) | 1 | Safe with connection pools; SELECT changes db per-connection which is unsafe | 2026-04-02 |
 | Startup validation rejects placeholder secrets in non-local | 1 | D-18 decision; prevents insecure production deployments | 2026-04-02 |
 | ASYNC_DATABASE_URI uses quote_plus() for password encoding | 1 | Handles special chars (@, #, /) in passwords safely in URLs | 2026-04-02 |
+| BigInteger PK + UUIDMixin dual-ID strategy | 1 | Int PK for join performance; UUID for API (prevents enumeration attacks) | 2026-04-02 |
+| server_default=func.now() for timestamps | 1 | Database-side defaults more reliable than Python-side for bulk inserts | 2026-04-02 |
+| NullPool for Alembic migrations | 1 | Avoids connection pool leaks during migration runs | 2026-04-02 |
+| Barrel import in models/__init__.py | 1 | Alembic autogenerate only discovers models registered in Base.metadata | 2026-04-02 |
 
 ---
 
@@ -76,9 +80,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Completed 01-01-PLAN.md (Project Scaffold & Python Tooling)
+**Stopped at:** Completed 01-03-PLAN.md (Database Layer, Models & Alembic)
 **Resume file:** None
-**Next action:** Execute Plan 02 — Database Layer (SQLAlchemy + Alembic + mixins + fastcrud)
+**Next action:** Execute Plan 04 — Redis + MinIO extensions
 
 ---
 
@@ -87,6 +91,7 @@ None currently.
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 6min | 6 | 20 |
+| 01 | 03 | 4min | 4 | 8 |
 
 ---
 
