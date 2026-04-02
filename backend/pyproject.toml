@@ -1,0 +1,75 @@
+[project]
+name = "papery-backend"
+version = "0.1.0"
+description = "PAPERY — AI-powered document intelligence platform (backend)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.35",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "redis[hiredis]>=5.2.0",
+    "minio>=7.2",
+    "fastcrud>=0.16.0",
+    "python-multipart>=0.0.18",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "httpx>=0.28.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0",
+    "httpx>=0.28.0",
+    "fakeredis[aioredis]>=2.25.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "S", "T20", "PT", "ASYNC", "RUF"]
+ignore = [
+    "B008",
+    "RUF012",
+    "S105",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "fastcrud.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "minio.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+]
