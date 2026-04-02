@@ -121,3 +121,13 @@ None - no external service configuration required. Docker images pull automatica
 ---
 *Phase: 01-backend-core-infrastructure*
 *Completed: 2026-04-02*
+
+## Self-Check: PASSED
+
+- ✓ `docker/docker-compose.middleware.yaml` exists with all 3 services
+- ✓ `docker/docker-compose.yaml` exists with web service and service_healthy deps
+- ✓ `docker/Dockerfile.dev` exists with python:3.12-slim + uv
+- ✓ `docker/middleware.env.example` exists with all credential variables
+- ✓ `.gitignore` updated with docker/volumes/ and docker/middleware.env
+- ✓ 3 task commits present (2f21292, 70ad00f, e534c76)
+- ✓ Both compose files validate without errors
