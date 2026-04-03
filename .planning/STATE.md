@@ -76,16 +76,18 @@ progress:
 | MinIO init/shutdown are sync (no await) | 1 | MinIO SDK is urllib3-based; only upload_file() needs run_in_executor | 2026-04-02 |
 | asyncio.get_running_loop() for upload_file() | 1 | get_event_loop() is deprecated in Python 3.10+, raises warnings in 3.12 | 2026-04-02 |
 | asyncio_mode=auto eliminates test markers | 1 | pytest-asyncio auto mode detects async tests; no @pytest.mark.asyncio needed | 2026-04-02 |
-| Class-level status_code/error_code defaults on PaperyError | 2 | Subclasses override at class level; constructor allows per-instance override | 2026-04-03 |
-| No FastAPI imports in domain exceptions | 2 | Inner layers (CRUD, services) stay decoupled from HTTP framework (D-09) | 2026-04-03 |
-| detail: Any | None in PaperyError and ErrorResponse | 2 | Allows structured error data for debugging without schema rigidity | 2026-04-03 |
+| ~~Class-level defaults on PaperyError~~ → Replaced by PaperyHTTPException(HTTPException) | kva | Subclasses set status_code+error_code in __init__; FastAPI native | 2026-04-03 |
+| ~~No FastAPI imports in domain exceptions~~ → Now inherits from HTTPException directly | kva | Exceptions ARE HTTP exceptions; coupling to FastAPI is intentional and correct | 2026-04-03 |
 | _get_request_id() helper with "unknown" fallback | 2 | Safe for pre-middleware edge cases; exception handlers always have a request_id | 2026-04-03 |
 | HTTP status → error_code mapping dict in http_exception_handler | 2 | Readable, extensible, avoids magic strings inline in handler logic | 2026-04-03 |
 | asyncio.timeout(2.5) per service in /ready (not shared) | 2 | Each service gets full budget; total worst-case 7.5s acceptable for readiness probe | 2026-04-03 |
 | `configs/` top-level (not nested in `core/`) | hq4 | Dify-proven pattern: config is a top-level concern, not domain logic; cleaner module boundaries | 2026-04-03 |
 | Single `services/` layer replaces `crud/` + services split | hq4 | Dify proves one services layer works well; eliminates CRUD abstraction overhead before Phase 3 starts | 2026-04-03 |
-| `libs/` scaffold for shared utilities | hq4 | Future home for password hashing, pagination, encryption helpers | 2026-04-03 |
+| `utils/` replaces `libs/` for shared utilities | kva | Convention: utils/ is universally understood; libs/ is non-standard in Python projects | 2026-04-03 |
 | `tasks/` scaffold for background workers | hq4 | Future home for ARQ/Celery worker function definitions | 2026-04-03 |
+| `PaperyHTTPException(HTTPException)` replaces `PaperyError(Exception)` | kva | User requirement: use FastAPI defaults, inherit only to add error_code; keeps full FastAPI ecosystem compatibility | 2026-04-03 |
+| Database in `core/db/session.py` not `extensions/` | kva | DB is core infrastructure, not an optional extension; Redis/MinIO remain in extensions/ | 2026-04-03 |
+| Makefile at `backend/` level | kva | 14 targets for dev automation; uv-based commands for consistency | 2026-04-03 |
 
 ---
 
