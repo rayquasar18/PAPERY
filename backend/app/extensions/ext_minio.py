@@ -5,7 +5,7 @@ from functools import partial
 
 from minio import Minio
 
-from app.core.config import settings
+from app.configs import settings
 
 logger = logging.getLogger(__name__)
 

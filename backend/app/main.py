@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 
 from app.api.v1 import api_v1_router
-from app.core.config import settings
+from app.configs import settings
 from app.core.exceptions import PaperyError
 from app.extensions import ext_database, ext_minio, ext_redis
 from app.middleware.request_id import RequestIDMiddleware

@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.core.config import settings
+from app.configs import settings
 from app.extensions import ext_database, ext_minio, ext_redis
 
 logger = logging.getLogger(__name__)

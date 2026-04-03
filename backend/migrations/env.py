@@ -6,7 +6,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.core.config import settings
+from app.configs import settings
 
 # CRITICAL: Import all models so Base.metadata knows about them
 from app.models import Base  # noqa: F401

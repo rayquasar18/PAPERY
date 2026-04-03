@@ -3,14 +3,14 @@ from typing import Self
 from pydantic import model_validator
 from pydantic_settings import SettingsConfigDict
 
-from app.core.config.admin import AdminConfig
-from app.core.config.app import AppConfig
-from app.core.config.cors import CorsConfig
-from app.core.config.database import DatabaseConfig
-from app.core.config.email import EmailConfig
-from app.core.config.minio import MinioConfig
-from app.core.config.redis import RedisConfig
-from app.core.config.security import SecurityConfig
+from app.configs.admin import AdminConfig
+from app.configs.app import AppConfig
+from app.configs.cors import CorsConfig
+from app.configs.database import DatabaseConfig
+from app.configs.email import EmailConfig
+from app.configs.minio import MinioConfig
+from app.configs.redis import RedisConfig
+from app.configs.security import SecurityConfig
 
 
 class AppSettings(
