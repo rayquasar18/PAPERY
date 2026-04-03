@@ -1,4 +1,9 @@
-"""Database extension — async SQLAlchemy engine + session factory."""
+"""Database session — async SQLAlchemy engine + session factory.
+
+This is core infrastructure (not an optional extension).
+Provides engine, session factory, lifecycle hooks, and a FastAPI dependency.
+"""
+
 import logging
 
 from sqlalchemy import text
@@ -60,6 +65,6 @@ async def get_session() -> AsyncSession:
         session: AsyncSession = Depends(get_session)
     """
     if async_session_factory is None:
-        raise RuntimeError("Database not initialized. Call ext_database.init() first.")
+        raise RuntimeError("Database not initialized. Call db_session.init() first.")
     async with async_session_factory() as session:
         yield session  # type: ignore[misc]

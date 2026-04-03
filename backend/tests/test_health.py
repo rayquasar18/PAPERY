@@ -29,7 +29,7 @@ class TestReadyEndpoint:
         mock_minio.list_buckets = MagicMock(return_value=[])
 
         with (
-            patch("app.api.v1.health.ext_database") as mock_db_ext,
+            patch("app.api.v1.health.db_session") as mock_db_ext,
             patch("app.api.v1.health.ext_redis") as mock_redis_ext,
             patch("app.api.v1.health.ext_minio") as mock_minio_ext,
         ):
@@ -49,7 +49,7 @@ class TestReadyEndpoint:
     async def test_ready_returns_503_when_db_down(self, async_client: AsyncClient):
         """GET /api/v1/ready returns 503 when PostgreSQL is unreachable."""
         with (
-            patch("app.api.v1.health.ext_database") as mock_db_ext,
+            patch("app.api.v1.health.db_session") as mock_db_ext,
             patch("app.api.v1.health.ext_redis") as mock_redis_ext,
             patch("app.api.v1.health.ext_minio") as mock_minio_ext,
         ):
@@ -79,7 +79,7 @@ class TestReadyEndpoint:
         )
 
         with (
-            patch("app.api.v1.health.ext_database") as mock_db_ext,
+            patch("app.api.v1.health.db_session") as mock_db_ext,
             patch("app.api.v1.health.ext_redis") as mock_redis_ext,
             patch("app.api.v1.health.ext_minio") as mock_minio_ext,
         ):

@@ -19,8 +19,8 @@ async def async_client():
     Patches extension init/shutdown to avoid requiring real services.
     """
     with (
-        patch("app.extensions.ext_database.init", new_callable=AsyncMock),
-        patch("app.extensions.ext_database.shutdown", new_callable=AsyncMock),
+        patch("app.core.db.session.init", new_callable=AsyncMock),
+        patch("app.core.db.session.shutdown", new_callable=AsyncMock),
         patch("app.extensions.ext_redis.init", new_callable=AsyncMock),
         patch("app.extensions.ext_redis.shutdown", new_callable=AsyncMock),
         patch("app.extensions.ext_minio.init", new_callable=MagicMock),

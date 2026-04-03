@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.configs import settings
-from app.extensions import ext_database, ext_minio, ext_redis
+from app.core.db import session as db_session
+from app.extensions import ext_minio, ext_redis
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,10 @@ async def readiness_check() -> JSONResponse:
 
     # PostgreSQL check
     try:
-        if ext_database.engine is None:
+        if db_session.engine is None:
             raise RuntimeError("Database engine not initialized")
         async with asyncio.timeout(2.5):
-            async with ext_database.engine.connect() as conn:
+            async with db_session.engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         checks["postgres"] = "ok"
     except Exception as exc:

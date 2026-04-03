@@ -13,8 +13,9 @@ from starlette.requests import Request
 
 from app.api.v1 import api_v1_router
 from app.configs import settings
+from app.core.db import session as db_session
 from app.core.exceptions import PaperyError
-from app.extensions import ext_database, ext_minio, ext_redis
+from app.extensions import ext_minio, ext_redis
 from app.middleware.request_id import RequestIDMiddleware
 from app.schemas.error import ErrorResponse
 
@@ -26,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize and shutdown extensions."""
     logger.info("Starting PAPERY backend v%s [%s]", settings.APP_VERSION, settings.ENVIRONMENT)
     # Startup: order matters (database first, then cache, then storage)
-    await ext_database.init()
+    await db_session.init()
     await ext_redis.init()
     ext_minio.init()  # Sync — MinIO SDK is synchronous
     logger.info("All extensions initialized")
@@ -34,7 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown: reverse order
     ext_minio.shutdown()  # Sync
     await ext_redis.shutdown()
-    await ext_database.shutdown()
+    await db_session.shutdown()
     logger.info("All extensions shut down")
 
 
