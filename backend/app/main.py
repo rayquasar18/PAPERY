@@ -14,7 +14,7 @@ from starlette.requests import Request
 from app.api.v1 import api_v1_router
 from app.configs import settings
 from app.core.db import session as db_session
-from app.core.exceptions import PaperyError
+from app.core.exceptions import PaperyHTTPException
 from app.extensions import ext_minio, ext_redis
 from app.middleware.request_id import RequestIDMiddleware
 from app.schemas.error import ErrorResponse
@@ -71,25 +71,48 @@ def _get_request_id(request: Request) -> str:
     return getattr(request.state, "request_id", "unknown")
 
 
-@app.exception_handler(PaperyError)
-async def papery_error_handler(request: Request, exc: PaperyError) -> JSONResponse:
-    """Handle all PAPERY domain exceptions → consistent ErrorResponse."""
-    logger.warning(
-        "PaperyError [%s] %s: %s",
-        exc.error_code,
-        exc.status_code,
-        exc.message,
-        extra={"request_id": _get_request_id(request)},
-    )
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    """Handle all HTTP exceptions → consistent ErrorResponse.
+
+    PaperyHTTPException subclasses carry their own error_code.
+    Plain HTTPExceptions use a status-code → error_code mapping.
+    """
+    # PaperyHTTPException carries a specific error_code
+    if isinstance(exc, PaperyHTTPException):
+        error_code = exc.error_code
+        message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
+        logger.warning(
+            "PaperyHTTPException [%s] %s: %s",
+            error_code,
+            exc.status_code,
+            message,
+            extra={"request_id": _get_request_id(request)},
+        )
+    else:
+        # Map common HTTP status codes to error codes
+        error_code_map: dict[int, str] = {
+            400: "BAD_REQUEST",
+            404: "NOT_FOUND",
+            405: "METHOD_NOT_ALLOWED",
+            408: "REQUEST_TIMEOUT",
+            500: "INTERNAL_ERROR",
+        }
+        error_code = error_code_map.get(exc.status_code, f"HTTP_{exc.status_code}")
+        message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
+
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
             success=False,
-            error_code=exc.error_code,
-            message=exc.message,
-            detail=exc.detail,
+            error_code=error_code,
+            message=message,
+            detail=None,
             request_id=_get_request_id(request),
         ).model_dump(),
+        headers=exc.headers,
     )
 
 
@@ -105,34 +128,6 @@ async def validation_error_handler(
             error_code="VALIDATION_ERROR",
             message="Request validation failed",
             detail=exc.errors(),
-            request_id=_get_request_id(request),
-        ).model_dump(),
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
-    """Handle Starlette/FastAPI HTTPExceptions (404, 405, etc.) → consistent ErrorResponse."""
-    # Map common HTTP status codes to error codes
-    error_code_map: dict[int, str] = {
-        400: "BAD_REQUEST",
-        404: "NOT_FOUND",
-        405: "METHOD_NOT_ALLOWED",
-        408: "REQUEST_TIMEOUT",
-        500: "INTERNAL_ERROR",
-    }
-    error_code = error_code_map.get(exc.status_code, f"HTTP_{exc.status_code}")
-    message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            success=False,
-            error_code=error_code,
-            message=message,
-            detail=None,
             request_id=_get_request_id(request),
         ).model_dump(),
     )

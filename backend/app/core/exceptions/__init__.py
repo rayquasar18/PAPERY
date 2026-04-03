@@ -1,30 +1,30 @@
 """PAPERY exception hierarchy.
 
 Usage:
-    from app.core.exceptions import ResourceNotFoundError, AuthError
-    raise ResourceNotFoundError("User not found", detail={"uuid": user_uuid})
+    from app.core.exceptions import NotFoundError, AuthenticationError
+    raise NotFoundError("User not found")
 """
 
-from app.core.exceptions.base import PaperyError
-from app.core.exceptions.domain import (
-    AccessDeniedError,
-    AuthError,
+from app.core.exceptions.base import PaperyHTTPException
+from app.core.exceptions.http import (
+    AuthenticationError,
     ConflictError,
     ExternalServiceError,
+    ForbiddenError,
+    NotFoundError,
     RateLimitError,
-    ResourceNotFoundError,
     StorageError,
     ValidationError,
 )
 
 __all__ = [
-    "AccessDeniedError",
-    "AuthError",
+    "AuthenticationError",
     "ConflictError",
     "ExternalServiceError",
-    "PaperyError",
+    "ForbiddenError",
+    "NotFoundError",
+    "PaperyHTTPException",
     "RateLimitError",
-    "ResourceNotFoundError",
     "StorageError",
     "ValidationError",
 ]

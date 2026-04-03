@@ -1,29 +1,29 @@
-from typing import Any
+"""Base PAPERY exception — extends FastAPI's HTTPException with error_code.
+
+All domain exceptions inherit from PaperyHTTPException. The exception handler
+reads error_code to build consistent ErrorResponse JSON with request_id.
+"""
+
+from fastapi import HTTPException
 
 
-class PaperyError(Exception):
-    """Base exception for all PAPERY domain errors.
+class PaperyHTTPException(HTTPException):
+    """Base PAPERY HTTP exception.
 
-    Inner layers (CRUD, services) raise subclasses of this.
-    The exception handler in main.py catches PaperyError and
-    converts it to a consistent JSON ErrorResponse.
+    Extends FastAPI's HTTPException with a machine-readable error_code.
+    Subclasses set class-level defaults; constructors allow per-instance override.
     """
 
-    status_code: int = 500
     error_code: str = "INTERNAL_ERROR"
 
     def __init__(
         self,
-        message: str = "An unexpected error occurred",
-        detail: Any | None = None,
+        status_code: int = 500,
+        detail: str = "An unexpected error occurred",
         *,
         error_code: str | None = None,
-        status_code: int | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
-        self.message = message
-        self.detail = detail
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
         if error_code is not None:
             self.error_code = error_code
-        if status_code is not None:
-            self.status_code = status_code
-        super().__init__(message)
