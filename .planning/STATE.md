@@ -82,7 +82,10 @@ progress:
 | _get_request_id() helper with "unknown" fallback | 2 | Safe for pre-middleware edge cases; exception handlers always have a request_id | 2026-04-03 |
 | HTTP status → error_code mapping dict in http_exception_handler | 2 | Readable, extensible, avoids magic strings inline in handler logic | 2026-04-03 |
 | asyncio.timeout(2.5) per service in /ready (not shared) | 2 | Each service gets full budget; total worst-case 7.5s acceptable for readiness probe | 2026-04-03 |
-| CORS wildcard guard uses "*" in self.CORS_ORIGINS | 2 | Handles ["*"] JSON list format that pydantic_settings produces from env vars | 2026-04-03 |
+| `configs/` top-level (not nested in `core/`) | hq4 | Dify-proven pattern: config is a top-level concern, not domain logic; cleaner module boundaries | 2026-04-03 |
+| Single `services/` layer replaces `crud/` + services split | hq4 | Dify proves one services layer works well; eliminates CRUD abstraction overhead before Phase 3 starts | 2026-04-03 |
+| `libs/` scaffold for shared utilities | hq4 | Future home for password hashing, pagination, encryption helpers | 2026-04-03 |
+| `tasks/` scaffold for background workers | hq4 | Future home for ARQ/Celery worker function definitions | 2026-04-03 |
 
 ---
 
@@ -94,9 +97,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Phase 2 complete — ready for phase transition or Phase 3 start
-**Resume file:** .planning/phases/02-error-handling-api-structure-health/02-04-SUMMARY.md
-**Next action:** Phase transition for Phase 2, then begin Phase 3 (Authentication — Core Flows)
+**Stopped at:** Backend structure refactored (Dify-aligned) — ready for Phase 3 (Auth) planning
+**Resume file:** .planning/quick/260403-hq4-research-dify-backend-architecture-and-r/260403-hq4-SUMMARY.md
+**Next action:** Begin Phase 3 (Authentication — Core Flows)
 
 ---
 
