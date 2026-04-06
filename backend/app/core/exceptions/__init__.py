@@ -1,30 +1,12 @@
-"""PAPERY exception hierarchy.
+"""PAPERY exception utilities.
+
+PAPERY uses FastAPI's built-in HTTPException directly.
+No custom exception subclasses — keep it standard.
 
 Usage:
-    from app.core.exceptions import NotFoundError, AuthenticationError
-    raise NotFoundError("User not found")
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="User not found")
+
+The global exception handler in main.py automatically adds
+request_id to all error responses.
 """
-
-from app.core.exceptions.base import PaperyHTTPException
-from app.core.exceptions.http import (
-    AuthenticationError,
-    ConflictError,
-    ExternalServiceError,
-    ForbiddenError,
-    NotFoundError,
-    RateLimitError,
-    StorageError,
-    ValidationError,
-)
-
-__all__ = [
-    "AuthenticationError",
-    "ConflictError",
-    "ExternalServiceError",
-    "ForbiddenError",
-    "NotFoundError",
-    "PaperyHTTPException",
-    "RateLimitError",
-    "StorageError",
-    "ValidationError",
-]
