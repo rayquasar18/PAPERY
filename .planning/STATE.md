@@ -103,6 +103,7 @@ None currently.
 |---|-------------|------|--------|-----------|
 | 260403-hq4 | Research Dify backend architecture and restructure PAPERY backend to follow Dify patterns | 2026-04-03 | cdbe4ea | [260403-hq4-research-dify-backend-architecture-and-r](./quick/260403-hq4-research-dify-backend-architecture-and-r/) |
 | 260403-kva | Refactor backend: remove libs→utils, PaperyHTTPException, move DB to core/db, add Makefile | 2026-04-03 | 7192503 | [260403-kva-refactor-backend-structure-remove-libs-u](./quick/260403-kva-refactor-backend-structure-remove-libs-u/) |
+| 260406-uk6 | Refactor exception handling: move error_code_map out of main.py, PaperyHTTPException with convenience subclasses | 2026-04-06 | d0d49e1 | [260406-uk6-refactor-exception-handling-replace-hard](./quick/260406-uk6-refactor-exception-handling-replace-hard/) |
 
 ---
 
@@ -140,6 +141,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-03 - Completed quick task 260403-kva: Refactor backend structure (libs→utils, PaperyHTTPException, DB to core/db, Makefile)
+Last activity: 2026-04-06 - Completed quick task 260406-uk6: Refactor exception handling out of main.py into core/exceptions/
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-06*
