@@ -1,36 +1,138 @@
-"""Tests for exception handling and ErrorResponse schema.
+"""Tests for PaperyHTTPException, convenience subclasses, and exception handlers.
 
-PAPERY uses FastAPI's built-in HTTPException directly.
-The exception handler adds request_id and maps status codes to error codes.
+Covers:
+- PaperyHTTPException construction and attributes
+- Convenience subclass defaults (status_code, error_code)
+- Backward compatibility: PaperyHTTPException IS-A HTTPException
+- Integration: PaperyHTTPException → correct error_code in response
+- Integration: plain HTTPException → fallback error_code via status map
+- ErrorResponse schema basics
 """
 
 from fastapi import HTTPException
 
+from app.core.exceptions import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    InternalError,
+    NotFoundError,
+    PaperyHTTPException,
+    RateLimitedError,
+    UnauthorizedError,
+)
 from app.schemas.error import ErrorResponse
 
 
-class TestHTTPExceptionDefaults:
-    """Test that FastAPI's HTTPException works as expected for PAPERY usage."""
+class TestPaperyHTTPException:
+    """Test PaperyHTTPException construction and attributes."""
 
-    def test_httpexception_has_status_code(self):
-        """HTTPException carries status_code."""
-        exc = HTTPException(status_code=404, detail="Not found")
+    def test_basic_construction(self):
+        exc = PaperyHTTPException(status_code=404, error_code="USER_NOT_FOUND", detail="User not found")
         assert exc.status_code == 404
+        assert exc.error_code == "USER_NOT_FOUND"
+        assert exc.detail == "User not found"
 
-    def test_httpexception_has_detail(self):
-        """HTTPException carries detail message."""
-        exc = HTTPException(status_code=400, detail="Bad request")
-        assert exc.detail == "Bad request"
+    def test_default_detail(self):
+        exc = PaperyHTTPException(status_code=500, error_code="INTERNAL_ERROR")
+        assert exc.detail == "An error occurred"
 
-    def test_httpexception_supports_headers(self):
-        """HTTPException supports custom headers."""
-        exc = HTTPException(status_code=429, detail="Too many requests", headers={"Retry-After": "60"})
+    def test_custom_headers(self):
+        exc = PaperyHTTPException(
+            status_code=429,
+            error_code="RATE_LIMITED",
+            detail="Slow down",
+            headers={"Retry-After": "60"},
+        )
         assert exc.headers == {"Retry-After": "60"}
 
-    def test_httpexception_is_exception(self):
-        """HTTPException is a proper Exception subclass."""
-        exc = HTTPException(status_code=500)
+    def test_is_httpexception(self):
+        """PaperyHTTPException must be an HTTPException subclass for FastAPI compat."""
+        exc = PaperyHTTPException(status_code=400, error_code="BAD_REQUEST")
+        assert isinstance(exc, HTTPException)
         assert isinstance(exc, Exception)
+
+    def test_none_headers_default(self):
+        exc = PaperyHTTPException(status_code=403, error_code="FORBIDDEN")
+        assert exc.headers is None
+
+
+class TestConvenienceSubclasses:
+    """Test that convenience subclasses set correct defaults."""
+
+    def test_bad_request_error(self):
+        exc = BadRequestError("Invalid input")
+        assert exc.status_code == 400
+        assert exc.error_code == "BAD_REQUEST"
+        assert exc.detail == "Invalid input"
+
+    def test_bad_request_error_defaults(self):
+        exc = BadRequestError()
+        assert exc.status_code == 400
+        assert exc.error_code == "BAD_REQUEST"
+        assert exc.detail == "Bad request"
+
+    def test_unauthorized_error(self):
+        exc = UnauthorizedError("Token expired")
+        assert exc.status_code == 401
+        assert exc.error_code == "UNAUTHORIZED"
+        assert exc.detail == "Token expired"
+
+    def test_forbidden_error(self):
+        exc = ForbiddenError("Access denied")
+        assert exc.status_code == 403
+        assert exc.error_code == "FORBIDDEN"
+        assert exc.detail == "Access denied"
+
+    def test_not_found_error(self):
+        exc = NotFoundError("User not found")
+        assert exc.status_code == 404
+        assert exc.error_code == "NOT_FOUND"
+        assert exc.detail == "User not found"
+
+    def test_conflict_error(self):
+        exc = ConflictError("Email already registered")
+        assert exc.status_code == 409
+        assert exc.error_code == "CONFLICT"
+        assert exc.detail == "Email already registered"
+
+    def test_rate_limited_error(self):
+        exc = RateLimitedError("Too many requests")
+        assert exc.status_code == 429
+        assert exc.error_code == "RATE_LIMITED"
+        assert exc.detail == "Too many requests"
+
+    def test_rate_limited_error_with_headers(self):
+        exc = RateLimitedError("Slow down", headers={"Retry-After": "30"})
+        assert exc.headers == {"Retry-After": "30"}
+
+    def test_internal_error(self):
+        exc = InternalError("Database connection failed")
+        assert exc.status_code == 500
+        assert exc.error_code == "INTERNAL_ERROR"
+        assert exc.detail == "Database connection failed"
+
+    def test_custom_error_code_override(self):
+        """Convenience subclasses allow overriding error_code."""
+        exc = NotFoundError("Project not found", error_code="PROJECT_NOT_FOUND")
+        assert exc.status_code == 404
+        assert exc.error_code == "PROJECT_NOT_FOUND"
+
+    def test_all_subclasses_are_papery_http_exception(self):
+        """All convenience subclasses inherit from PaperyHTTPException."""
+        classes = [
+            BadRequestError,
+            UnauthorizedError,
+            ForbiddenError,
+            NotFoundError,
+            ConflictError,
+            RateLimitedError,
+            InternalError,
+        ]
+        for cls in classes:
+            exc = cls()
+            assert isinstance(exc, PaperyHTTPException)
+            assert isinstance(exc, HTTPException)
 
 
 class TestErrorResponse:
