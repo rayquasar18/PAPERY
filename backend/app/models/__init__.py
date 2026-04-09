@@ -7,10 +7,13 @@ by `alembic revision --autogenerate`.
 """
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+from app.models.user import OAuthAccount, User
 
 __all__ = [
     "Base",
+    "OAuthAccount",
     "SoftDeleteMixin",
     "TimestampMixin",
     "UUIDMixin",
+    "User",
 ]
