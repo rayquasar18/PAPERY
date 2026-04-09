@@ -7,3 +7,4 @@ class AppConfig(BaseSettings):
     APP_VERSION: str = Field(default="0.1.0")
     DEBUG: bool = Field(default=False)
     ENVIRONMENT: str = Field(default="local")  # local | staging | production
+    FRONTEND_URL: str = Field(default="http://localhost:3000")
