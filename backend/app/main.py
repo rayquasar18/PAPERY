@@ -11,7 +11,8 @@ from app.api.v1 import api_v1_router
 from app.configs import settings
 from app.core.db import session as db_session
 from app.core.exceptions.handlers import register_exception_handlers
-from app.extensions import ext_minio, ext_redis
+from app.infra.minio import client as minio_client
+from app.infra.redis import client as redis_client
 from app.middleware.request_id import RequestIDMiddleware
 
 logger = logging.getLogger(__name__)
@@ -19,19 +20,19 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan: initialize and shutdown extensions."""
+    """Application lifespan: initialize and shutdown infrastructure services."""
     logger.info("Starting PAPERY backend v%s [%s]", settings.APP_VERSION, settings.ENVIRONMENT)
     # Startup: order matters (database first, then cache, then storage)
     await db_session.init()
-    await ext_redis.init()
-    ext_minio.init()  # Sync — MinIO SDK is synchronous
-    logger.info("All extensions initialized")
+    await redis_client.init()
+    minio_client.init()  # Sync — MinIO SDK is synchronous
+    logger.info("All services initialized")
     yield
     # Shutdown: reverse order
-    ext_minio.shutdown()  # Sync
-    await ext_redis.shutdown()
+    minio_client.shutdown()  # Sync
+    await redis_client.shutdown()
     await db_session.shutdown()
-    logger.info("All extensions shut down")
+    logger.info("All services shut down")
 
 
 app = FastAPI(

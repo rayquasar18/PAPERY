@@ -23,9 +23,7 @@ def _get_request_id(request: Request) -> str:
     return getattr(request.state, "request_id", "unknown")
 
 
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle all HTTP exceptions → consistent ErrorResponse with request_id.
 
     If the exception is a ``PaperyHTTPException``, its ``error_code`` is used
@@ -52,9 +50,7 @@ async def http_exception_handler(
     )
 
 
-async def validation_error_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle Pydantic request validation errors → consistent ErrorResponse."""
     return JSONResponse(
         status_code=422,

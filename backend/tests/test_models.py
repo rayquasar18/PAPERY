@@ -1,4 +1,5 @@
 """Tests for SQLAlchemy base models and mixins (INFRA-14, INFRA-15)."""
+
 from datetime import UTC, datetime
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
@@ -73,9 +74,7 @@ class TestSoftDeleteMixin:
 
     def test_is_deleted_is_property(self):
         """is_deleted should be a property, not a column."""
-        assert isinstance(
-            SoftDeleteMixin.__dict__["is_deleted"], property
-        )
+        assert isinstance(SoftDeleteMixin.__dict__["is_deleted"], property)
 
 
 class TestModelBarrelImports:

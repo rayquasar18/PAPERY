@@ -1,4 +1,5 @@
 """SQLAlchemy base model and mixins for all PAPERY models."""
+
 import uuid as uuid_pkg
 from datetime import datetime
 
@@ -12,9 +13,7 @@ class Base(DeclarativeBase):
 
     __abstract__ = True
 
-    id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 
 
 class UUIDMixin:

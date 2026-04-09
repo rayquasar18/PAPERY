@@ -156,12 +156,12 @@ class InternalError(PaperyHTTPException):
 
 __all__ = [
     "HTTP_STATUS_ERROR_CODE_MAP",
-    "PaperyHTTPException",
     "BadRequestError",
-    "UnauthorizedError",
-    "ForbiddenError",
-    "NotFoundError",
     "ConflictError",
-    "RateLimitedError",
+    "ForbiddenError",
     "InternalError",
+    "NotFoundError",
+    "PaperyHTTPException",
+    "RateLimitedError",
+    "UnauthorizedError",
 ]

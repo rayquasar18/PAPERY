@@ -30,8 +30,8 @@ class TestReadyEndpoint:
 
         with (
             patch("app.api.v1.health.db_session") as mock_db_ext,
-            patch("app.api.v1.health.ext_redis") as mock_redis_ext,
-            patch("app.api.v1.health.ext_minio") as mock_minio_ext,
+            patch("app.api.v1.health.redis_client") as mock_redis_ext,
+            patch("app.api.v1.health.minio_client") as mock_minio_ext,
         ):
             mock_db_ext.engine = mock_engine
             mock_redis_ext.cache_client = mock_redis
@@ -50,8 +50,8 @@ class TestReadyEndpoint:
         """GET /api/v1/ready returns 503 when PostgreSQL is unreachable."""
         with (
             patch("app.api.v1.health.db_session") as mock_db_ext,
-            patch("app.api.v1.health.ext_redis") as mock_redis_ext,
-            patch("app.api.v1.health.ext_minio") as mock_minio_ext,
+            patch("app.api.v1.health.redis_client") as mock_redis_ext,
+            patch("app.api.v1.health.minio_client") as mock_minio_ext,
         ):
             mock_db_ext.engine = None  # Not initialized
             mock_redis_ext.cache_client = AsyncMock()
@@ -80,8 +80,8 @@ class TestReadyEndpoint:
 
         with (
             patch("app.api.v1.health.db_session") as mock_db_ext,
-            patch("app.api.v1.health.ext_redis") as mock_redis_ext,
-            patch("app.api.v1.health.ext_minio") as mock_minio_ext,
+            patch("app.api.v1.health.redis_client") as mock_redis_ext,
+            patch("app.api.v1.health.minio_client") as mock_minio_ext,
         ):
             mock_db_ext.engine = mock_engine
             mock_redis_ext.cache_client = None  # Not initialized

@@ -1,4 +1,5 @@
-"""MinIO extension — S3-compatible file storage with presigned URL support."""
+"""MinIO client — S3-compatible file storage with presigned URL support."""
+
 import logging
 from datetime import timedelta
 from functools import partial
@@ -62,7 +63,7 @@ def presigned_get_url(
         Presigned URL string.
     """
     if client is None:
-        raise RuntimeError("MinIO not initialized. Call ext_minio.init() first.")
+        raise RuntimeError("MinIO not initialized. Call minio_client.init() first.")
 
     expiry = timedelta(seconds=expires or settings.MINIO_PRESIGNED_GET_EXPIRY)
     return client.presigned_get_object(
@@ -86,7 +87,7 @@ def presigned_put_url(
         Presigned URL string.
     """
     if client is None:
-        raise RuntimeError("MinIO not initialized. Call ext_minio.init() first.")
+        raise RuntimeError("MinIO not initialized. Call minio_client.init() first.")
 
     expiry = timedelta(seconds=expires or settings.MINIO_PRESIGNED_PUT_EXPIRY)
     return client.presigned_put_object(
@@ -112,7 +113,7 @@ async def upload_file(
     import io
 
     if client is None:
-        raise RuntimeError("MinIO not initialized. Call ext_minio.init() first.")
+        raise RuntimeError("MinIO not initialized. Call minio_client.init() first.")
 
     loop = asyncio.get_running_loop()
     stream = io.BytesIO(data)

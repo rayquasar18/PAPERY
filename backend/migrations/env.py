@@ -1,4 +1,5 @@
 """Alembic async migration environment."""
+
 import asyncio
 from logging.config import fileConfig
 
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.configs import settings
 
 # CRITICAL: Import all models so Base.metadata knows about them
-from app.models import Base  # noqa: F401
+from app.models import Base
 
 # Alembic Config object
 config = context.config

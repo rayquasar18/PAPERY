@@ -1,4 +1,5 @@
-"""Redis extension — three isolated namespace clients (cache, queue, rate_limit)."""
+"""Redis client — three isolated namespace clients (cache, queue, rate_limit)."""
+
 import logging
 
 import redis.asyncio as aioredis

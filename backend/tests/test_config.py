@@ -1,4 +1,5 @@
 """Tests for Pydantic Settings configuration system (INFRA-09)."""
+
 import os
 from unittest.mock import patch
 
@@ -28,9 +29,7 @@ class TestAppSettings:
             POSTGRES_PASSWORD="pass",
             POSTGRES_DB="testdb",
         )
-        assert config.ASYNC_DATABASE_URI == (
-            "postgresql+asyncpg://user:pass@dbhost:5432/testdb"
-        )
+        assert config.ASYNC_DATABASE_URI == ("postgresql+asyncpg://user:pass@dbhost:5432/testdb")
 
     def test_async_database_uri_special_chars_in_password(self):
         """Password with special characters should be URL-encoded."""

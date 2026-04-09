@@ -36,21 +36,15 @@ class AppSettings(
         if self.ENVIRONMENT != "local":
             if "CHANGE-ME" in self.SECRET_KEY or len(self.SECRET_KEY) < 32:
                 raise ValueError(
-                    "SECRET_KEY must be at least 32 characters and not a placeholder "
-                    f"in {self.ENVIRONMENT} environment"
+                    f"SECRET_KEY must be at least 32 characters and not a placeholder in {self.ENVIRONMENT} environment"
                 )
             if self.POSTGRES_PASSWORD in ("papery_dev_password", ""):
-                raise ValueError(
-                    f"POSTGRES_PASSWORD must be set in {self.ENVIRONMENT} environment"
-                )
+                raise ValueError(f"POSTGRES_PASSWORD must be set in {self.ENVIRONMENT} environment")
             if self.MINIO_SECRET_KEY in ("minioadmin", ""):
-                raise ValueError(
-                    f"MINIO_SECRET_KEY must be set in {self.ENVIRONMENT} environment"
-                )
+                raise ValueError(f"MINIO_SECRET_KEY must be set in {self.ENVIRONMENT} environment")
             if "*" in self.CORS_ORIGINS:
                 raise ValueError(
-                    "CORS wildcard '*' is not allowed in non-local environments. "
-                    "Set explicit origins in CORS_ORIGINS."
+                    "CORS wildcard '*' is not allowed in non-local environments. Set explicit origins in CORS_ORIGINS."
                 )
         if self.ENVIRONMENT == "production" and not self.SMTP_HOST:
             raise ValueError("SMTP_HOST is required in production environment")

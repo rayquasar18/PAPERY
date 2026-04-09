@@ -20,9 +20,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     phases, this should be reviewed (or replaced with pure ASGI middleware).
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Use client-provided ID for distributed tracing, or generate new one
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id

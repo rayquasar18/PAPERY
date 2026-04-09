@@ -21,10 +21,10 @@ async def async_client():
     with (
         patch("app.core.db.session.init", new_callable=AsyncMock),
         patch("app.core.db.session.shutdown", new_callable=AsyncMock),
-        patch("app.extensions.ext_redis.init", new_callable=AsyncMock),
-        patch("app.extensions.ext_redis.shutdown", new_callable=AsyncMock),
-        patch("app.extensions.ext_minio.init", new_callable=MagicMock),
-        patch("app.extensions.ext_minio.shutdown", new_callable=MagicMock),
+        patch("app.infra.redis.client.init", new_callable=AsyncMock),
+        patch("app.infra.redis.client.shutdown", new_callable=AsyncMock),
+        patch("app.infra.minio.client.init", new_callable=MagicMock),
+        patch("app.infra.minio.client.shutdown", new_callable=MagicMock),
     ):
         from app.main import app
 
