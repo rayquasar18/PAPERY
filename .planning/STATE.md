@@ -90,6 +90,9 @@ progress:
 | `PaperyHTTPException(HTTPException)` replaces `PaperyError(Exception)` | kva | User requirement: use FastAPI defaults, inherit only to add error_code; keeps full FastAPI ecosystem compatibility | 2026-04-03 |
 | Database in `core/db/session.py` not `extensions/` | kva | DB is core infrastructure, not an optional extension; Redis/MinIO remain in extensions/ | 2026-04-03 |
 | Makefile at `backend/` level | kva | 14 targets for dev automation; uv-based commands for consistency | 2026-04-03 |
+| `core/` = Foundation only (DB + exceptions) | sml | core/ must never grow for new services; only domain fundamentals | 2026-04-09 |
+| `extensions/` → `infra/` with subdirectories | sml | infra/redis/, infra/minio/ — clearer intent, room for infra/email/, infra/broker/ | 2026-04-09 |
+| `tasks/` → `worker/` | sml | Matches ARQ convention; clearer than generic "tasks" for background jobs | 2026-04-09 |
 
 ---
 
@@ -106,6 +109,7 @@ None currently.
 | 260403-hq4 | Research Dify backend architecture and restructure PAPERY backend to follow Dify patterns | 2026-04-03 | cdbe4ea | [260403-hq4-research-dify-backend-architecture-and-r](./quick/260403-hq4-research-dify-backend-architecture-and-r/) |
 | 260403-kva | Refactor backend: remove libs→utils, PaperyHTTPException, move DB to core/db, add Makefile | 2026-04-03 | 7192503 | [260403-kva-refactor-backend-structure-remove-libs-u](./quick/260403-kva-refactor-backend-structure-remove-libs-u/) |
 | 260406-uk6 | Refactor exception handling: move error_code_map out of main.py, PaperyHTTPException with convenience subclasses | 2026-04-06 | d0d49e1 | [260406-uk6-refactor-exception-handling-replace-hard](./quick/260406-uk6-refactor-exception-handling-replace-hard/) |
+| 260409-sml | Refactor backend: core/ as Foundation, extensions/ → infra/, tasks/ → worker/ | 2026-04-09 | 6122208 | [260409-sml-refactor-backend-core-as-foundation-infr](./quick/260409-sml-refactor-backend-core-as-foundation-infr/) |
 
 ---
 
@@ -143,6 +147,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-06 - Completed quick task 260406-uk6: Refactor exception handling out of main.py into core/exceptions/
+Last activity: 2026-04-09 - Completed quick task 260409-sml: Refactor backend: core/ as Foundation, extensions/ → infra/, tasks/ → worker/
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-09*
