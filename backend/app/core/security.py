@@ -111,6 +111,7 @@ def create_email_verification_token(user_uuid: uuid_pkg.UUID) -> str:
 # ---------------------------------------------------------------------------
 BLACKLIST_PREFIX = "blacklist:jti:"
 FAMILY_PREFIX = "token_family:"
+RESET_JTI_PREFIX = "reset_jti:"
 
 
 def _redis() -> object:
@@ -165,3 +166,38 @@ async def invalidate_token_family(family_id: str) -> None:
         await pipe.execute()
     else:
         await client.delete(key)  # type: ignore[union-attr]
+
+
+# ---------------------------------------------------------------------------
+# Password reset token
+# ---------------------------------------------------------------------------
+async def create_password_reset_token(user_uuid: uuid_pkg.UUID) -> str:
+    """Create a single-use JWT for password reset (1-hour TTL).
+
+    If a previous reset token exists for this user, it is blacklisted
+    (token override — only the latest reset token is valid).
+    """
+    client = _redis()
+    reset_key = f"{RESET_JTI_PREFIX}{user_uuid}"
+
+    # Blacklist any existing reset JTI (D-06: token override)
+    old_jti = await client.get(reset_key)  # type: ignore[union-attr]
+    if old_jti:
+        await blacklist_token(old_jti.decode() if isinstance(old_jti, bytes) else old_jti, 3600)
+
+    now = datetime.now(UTC)
+    jti = str(uuid_pkg.uuid4())
+    payload = {
+        "sub": str(user_uuid),
+        "jti": jti,
+        "type": "password_reset",
+        "purpose": "password_reset",
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(hours=1)).timestamp()),
+    }
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    # Store current JTI so we can override it on next request
+    await client.setex(reset_key, 3600, jti)  # type: ignore[union-attr]
+
+    return token
