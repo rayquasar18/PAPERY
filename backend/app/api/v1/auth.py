@@ -522,6 +522,21 @@ async def github_callback(
         logger.warning("GitHub OAuth: invalid state parameter")
         return RedirectResponse(url=f"{frontend_url}/login?error=oauth_csrf", status_code=302)
 
+    try:
+        provider = _get_github_provider()
+        access_token = await provider.get_access_token(code)
+        user_info = await provider.get_user_info(access_token)
+        user = await auth_service.oauth_login_or_register(db, user_info)
+    except Exception:
+        logger.exception("GitHub OAuth callback failed")
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
+
+    # Issue JWT token pair
+    access_jwt, refresh_jwt = create_token_pair(user.uuid)
+    refresh_payload = decode_token(refresh_jwt)
+    await register_token_in_family(refresh_payload.family, refresh_payload.jti)  # type: ignore[arg-type]
+    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
+
     # Set cookies on redirect response
     redirect = RedirectResponse(url=f"{frontend_url}/dashboard", status_code=302)
     _set_auth_cookies(redirect, access_jwt, refresh_jwt)
