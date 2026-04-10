@@ -40,8 +40,10 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+from app.repositories.oauth_account_repository import OAuthAccountRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import TokenPayload
+from app.schemas.oauth import OAuthUserInfo
 from app.utils.email import render_email_template, send_email
 
 logger = logging.getLogger(__name__)
@@ -383,6 +385,103 @@ class AuthService:
             is_superuser=True,
         )
         logger.info("Created superuser: %s", admin_email)
+
+
+# ---------------------------------------------------------------------------
+# OAuth login / registration (module-level — not class-bound)
+# ---------------------------------------------------------------------------
+
+async def oauth_login_or_register(
+    db: AsyncSession,
+    user_info: OAuthUserInfo,
+) -> User:
+    """Find or create a user from OAuth provider info.
+
+    Logic (D-14, D-15):
+    1. If OAuthAccount exists for this provider+provider_user_id → return existing user (login)
+    2. If a User with the same email exists → auto-link OAuth account (D-14)
+       - But reject if user already has a DIFFERENT OAuth provider linked (D-15)
+    3. Otherwise → create new User + OAuthAccount (registration)
+
+    OAuth users are auto-verified (is_verified=True) because the provider
+    guarantees email ownership.
+    """
+    oauth_repo = OAuthAccountRepository(db)
+    user_repo = UserRepository(db)
+
+    # 1. Check for existing OAuth account (returning user)
+    existing_oauth = await oauth_repo.get(
+        provider=user_info.provider,
+        provider_user_id=user_info.provider_user_id,
+    )
+    if existing_oauth is not None:
+        user = await user_repo.get(id=existing_oauth.user_id)
+        if user is None or not user.is_active:
+            raise UnauthorizedError(detail="Account not found or deactivated")
+        return user
+
+    # 2. Check for existing user by email (auto-link per D-14)
+    existing_user = await user_repo.get(email=user_info.email.lower())
+    if existing_user is not None:
+        if not existing_user.is_active:
+            raise UnauthorizedError(detail="Account is deactivated")
+
+        # D-15: Single OAuth provider per user
+        existing_oauth_for_user = await oauth_repo.get(user_id=existing_user.id)
+        if existing_oauth_for_user is not None:
+            raise ConflictError(
+                detail="This account is already linked to another OAuth provider. "
+                "Please sign in with your existing provider or use email/password.",
+            )
+
+        # Link new OAuth provider to existing user
+        await oauth_repo.create_oauth_account(
+            user_id=existing_user.id,
+            provider=user_info.provider,
+            provider_user_id=user_info.provider_user_id,
+            provider_email=user_info.email,
+        )
+
+        # Auto-verify if not already (email confirmed by OAuth provider)
+        if not existing_user.is_verified:
+            existing_user.is_verified = True
+            await user_repo.update(existing_user)
+
+        logger.info(
+            "Linked %s OAuth to existing user=%s",
+            user_info.provider,
+            existing_user.uuid,
+        )
+        return existing_user
+
+    # 3. Create new user + OAuth account
+    new_user = await user_repo.create_user(
+        email=user_info.email.lower(),
+        hashed_password=None,  # OAuth-only — no password
+        is_active=True,
+        is_verified=True,  # Provider guarantees email ownership
+        is_superuser=False,
+    )
+
+    # Set display name from provider if available
+    if user_info.name and not new_user.display_name:
+        new_user.display_name = user_info.name
+        await user_repo.update(new_user)
+
+    await oauth_repo.create_oauth_account(
+        user_id=new_user.id,
+        provider=user_info.provider,
+        provider_user_id=user_info.provider_user_id,
+        provider_email=user_info.email,
+    )
+
+    logger.info(
+        "Created new user via %s OAuth: user=%s email=%s",
+        user_info.provider,
+        new_user.uuid,
+        new_user.email,
+    )
+    return new_user
 
 
 # ---------------------------------------------------------------------------
