@@ -26,6 +26,7 @@ from app.core.exceptions import (
 from app.core.security import (
     blacklist_token,
     create_email_verification_token,
+    create_password_reset_token,
     create_token_pair,
     decode_token,
     hash_password,
@@ -37,7 +38,7 @@ from app.core.security import (
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import TokenPayload
-from app.utils.email import send_email
+from app.utils.email import render_email_template, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +244,82 @@ async def send_verification_email(email: str, user_uuid: uuid_pkg.UUID) -> None:
         subject=f"Verify your email — {settings.APP_NAME}",
         html_body=html_body,
     )
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+async def request_password_reset(db: AsyncSession, email: str) -> None:
+    """Generate a reset token and send a password reset email.
+
+    Anti-enumeration: does nothing (silently) if the email does not exist
+    or the account is inactive. The caller always returns a success message.
+    """
+    user_repo = UserRepository(db)
+    user = await user_repo.get(email=email.lower())
+
+    if user is None or not user.is_active:
+        return  # Silent — anti-enumeration (D-04)
+
+    if user.hashed_password is None:
+        # OAuth-only user — cannot reset a password that doesn't exist
+        return
+
+    token = await create_password_reset_token(user.uuid)
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+
+    html_body = render_email_template(
+        "password_reset",
+        locale="en",  # TODO: use user locale preference when available
+        context={"reset_url": reset_url, "app_name": settings.APP_NAME},
+    )
+
+    await send_email(
+        to=user.email,
+        subject=f"Reset your password — {settings.APP_NAME}",
+        html_body=html_body,
+    )
+
+
+async def reset_password(db: AsyncSession, token: str, new_password: str) -> None:
+    """Validate a reset token and update the user's password.
+
+    Enforces single-use: the token's JTI is blacklisted after success.
+    """
+    from jose import JWTError
+    from jose import jwt as jose_jwt
+
+    try:
+        raw = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = TokenPayload(**raw)
+    except JWTError as exc:
+        raise BadRequestError(detail=f"Invalid or expired reset token: {exc}") from exc
+
+    if payload.purpose != "password_reset":
+        raise BadRequestError(detail="Token is not a password reset token")
+
+    # Single-use check
+    if await is_token_blacklisted(payload.jti):
+        raise BadRequestError(detail="This reset link has already been used")
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
+    if user is None:
+        raise NotFoundError(detail="User not found")
+
+    if not user.is_active:
+        raise BadRequestError(detail="Account is deactivated")
+
+    # Update password
+    user.hashed_password = hash_password(new_password)
+    await user_repo.update(user)
+
+    # Blacklist the reset token JTI (single-use enforcement)
+    remaining = payload.exp - int(datetime.now(UTC).timestamp())
+    if remaining > 0:
+        await blacklist_token(payload.jti, remaining)
+
+    logger.info("Password reset completed for user=%s", payload.sub)
 
 
 # ---------------------------------------------------------------------------
