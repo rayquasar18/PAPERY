@@ -6,6 +6,10 @@ JWT lifecycle, token blacklist) to ``app.core.security``.
 
 Data access is handled by ``app.repositories.UserRepository`` — this service
 contains only business logic, validation, and orchestration.
+
+Usage:
+    service = AuthService(db)
+    user = await service.register_user(email, password)
 """
 
 from __future__ import annotations
@@ -43,180 +47,211 @@ from app.utils.email import render_email_template, send_email
 logger = logging.getLogger(__name__)
 
 
-async def register_user(db: AsyncSession, email: str, password: str) -> User:
-    """Create a new local user.
+class AuthService:
+    """Class-based auth service — one instance per request lifecycle.
 
-    Raises ``ConflictError`` if the email is already registered.
-    If the existing account is OAuth-only (no password), hints the user
-    to log in via their OAuth provider instead.
+    Constructor accepts an ``AsyncSession``; all methods use the same
+    ``UserRepository`` instance created at construction time.
+
+    Example::
+
+        service = AuthService(db)
+        user = await service.register_user(email, password)
     """
-    user_repo = UserRepository(db)
-    existing = await user_repo.get(email=email.lower())
-    if existing is not None:
-        if existing.hashed_password is None:
-            raise ConflictError(
-                detail="This email is linked to a social login. "
+
+    def __init__(self, db: AsyncSession) -> None:
+        self._db: AsyncSession = db
+        self._user_repo: UserRepository = UserRepository(db)
+
+    # ------------------------------------------------------------------
+    # Helper methods — for router-level lookups without direct repo access
+    # ------------------------------------------------------------------
+
+    async def get_user_by_uuid(self, user_uuid: uuid_pkg.UUID) -> User | None:
+        """Return a user by UUID, or None if not found."""
+        return await self._user_repo.get(uuid=user_uuid)
+
+    async def get_user_by_email(self, email: str) -> User | None:
+        """Return a user by email (lowercased), or None if not found."""
+        return await self._user_repo.get(email=email.lower())
+
+    # ------------------------------------------------------------------
+    # Registration
+    # ------------------------------------------------------------------
+
+    async def register_user(self, email: str, password: str) -> User:
+        """Create a new local user.
+
+        Raises ``ConflictError`` if the email is already registered.
+        If the existing account is OAuth-only (no password), hints the user
+        to log in via their OAuth provider instead.
+        """
+        existing = await self._user_repo.get(email=email.lower())
+        if existing is not None:
+            if existing.hashed_password is None:
+                raise ConflictError(
+                    detail="This email is linked to a social login. "
+                    "Please sign in with your OAuth provider.",
+                )
+            raise ConflictError(detail="Email already registered")
+
+        return await self._user_repo.create_user(
+            email=email,
+            hashed_password=hash_password(password),
+            is_active=True,
+            is_verified=False,
+            is_superuser=False,
+        )
+
+    # ------------------------------------------------------------------
+    # Authentication
+    # ------------------------------------------------------------------
+
+    async def authenticate_user(self, email: str, password: str) -> User:
+        """Validate credentials, returning the user on success.
+
+        Raises ``UnauthorizedError`` for invalid credentials or inactive accounts.
+        """
+        user = await self._user_repo.get(email=email.lower())
+        if user is None:
+            raise UnauthorizedError(detail="Invalid email or password")
+
+        if user.hashed_password is None:
+            raise UnauthorizedError(
+                detail="This account uses social login. "
                 "Please sign in with your OAuth provider.",
             )
-        raise ConflictError(detail="Email already registered")
 
-    return await user_repo.create_user(
-        email=email,
-        hashed_password=hash_password(password),
-        is_active=True,
-        is_verified=False,
-        is_superuser=False,
-    )
+        if not verify_password(password, user.hashed_password):
+            raise UnauthorizedError(detail="Invalid email or password")
 
+        if not user.is_active:
+            raise UnauthorizedError(detail="Account is deactivated")
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
-    """Validate credentials, returning the user on success.
+        return user
 
-    Raises ``UnauthorizedError`` for invalid credentials or inactive accounts.
-    """
-    user_repo = UserRepository(db)
-    user = await user_repo.get(email=email.lower())
-    if user is None:
-        raise UnauthorizedError(detail="Invalid email or password")
+    # ------------------------------------------------------------------
+    # Logout
+    # ------------------------------------------------------------------
 
-    if user.hashed_password is None:
-        raise UnauthorizedError(
-            detail="This account uses social login. "
-            "Please sign in with your OAuth provider.",
-        )
+    async def logout_user(
+        self,
+        access_payload: TokenPayload,
+        refresh_jti: str | None = None,
+    ) -> None:
+        """Blacklist the current access token and optionally the refresh token.
 
-    if not verify_password(password, user.hashed_password):
-        raise UnauthorizedError(detail="Invalid email or password")
+        If the access token carries a ``family`` claim, the whole family is
+        invalidated (revoking all related refresh tokens).
+        """
+        # Blacklist the access token for its remaining lifetime
+        remaining = access_payload.exp - int(datetime.now(UTC).timestamp())
+        if remaining > 0:
+            await blacklist_token(access_payload.jti, remaining)
 
-    if not user.is_active:
-        raise UnauthorizedError(detail="Account is deactivated")
+        # Blacklist explicit refresh jti if provided
+        if refresh_jti:
+            await blacklist_token(
+                refresh_jti,
+                settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+            )
 
-    return user
+        # Invalidate the entire token family (if present)
+        if access_payload.family:
+            await invalidate_token_family(access_payload.family)
 
+    # ------------------------------------------------------------------
+    # Token rotation (refresh)
+    # ------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Logout
-# ---------------------------------------------------------------------------
-async def logout_user(
-    access_payload: TokenPayload,
-    refresh_jti: str | None = None,
-) -> None:
-    """Blacklist the current access token and optionally the refresh token.
+    async def rotate_refresh_token(
+        self,
+        old_payload: TokenPayload,
+    ) -> tuple[str, str]:
+        """Issue a new token pair from a valid refresh token.
 
-    If the access token carries a ``family`` claim, the whole family is
-    invalidated (revoking all related refresh tokens).
-    """
-    # Blacklist the access token for its remaining lifetime
-    remaining = access_payload.exp - int(datetime.now(UTC).timestamp())
-    if remaining > 0:
-        await blacklist_token(access_payload.jti, remaining)
+        Implements replay detection: if the old jti is already blacklisted,
+        the entire token family is invalidated (all sessions revoked).
 
-    # Blacklist explicit refresh jti if provided
-    if refresh_jti:
-        await blacklist_token(
-            refresh_jti,
-            settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        )
+        Returns ``(new_access_token, new_refresh_token)``.
+        """
+        if old_payload.type != "refresh":
+            raise UnauthorizedError(detail="Token is not a refresh token")
 
-    # Invalidate the entire token family (if present)
-    if access_payload.family:
-        await invalidate_token_family(access_payload.family)
+        family_id = old_payload.family
+        if not family_id:
+            raise UnauthorizedError(detail="Refresh token missing family claim")
 
+        # Replay detection — if this jti was already used, someone stole a token
+        if await is_token_blacklisted(old_payload.jti):
+            logger.warning(
+                "Refresh token replay detected — invalidating family=%s user=%s",
+                family_id,
+                old_payload.sub,
+            )
+            await invalidate_token_family(family_id)
+            raise UnauthorizedError(
+                detail="Token reuse detected. All sessions revoked for security.",
+                error_code="TOKEN_REPLAY",
+            )
 
-# ---------------------------------------------------------------------------
-# Token rotation (refresh)
-# ---------------------------------------------------------------------------
-async def rotate_refresh_token(
-    db: AsyncSession,
-    old_payload: TokenPayload,
-) -> tuple[str, str]:
-    """Issue a new token pair from a valid refresh token.
+        # Verify user still exists and is active
+        user = await self._user_repo.get(uuid=uuid_pkg.UUID(old_payload.sub))
+        if user is None or not user.is_active:
+            await invalidate_token_family(family_id)
+            raise UnauthorizedError(detail="User not found or deactivated")
 
-    Implements replay detection: if the old jti is already blacklisted,
-    the entire token family is invalidated (all sessions revoked).
+        # Blacklist the old refresh token
+        remaining = old_payload.exp - int(datetime.now(UTC).timestamp())
+        if remaining > 0:
+            await blacklist_token(old_payload.jti, remaining)
 
-    Returns ``(new_access_token, new_refresh_token)``.
-    """
-    if old_payload.type != "refresh":
-        raise UnauthorizedError(detail="Token is not a refresh token")
+        # Issue new pair in the same family
+        access, refresh = create_token_pair(user.uuid, family_id=family_id)
 
-    family_id = old_payload.family
-    if not family_id:
-        raise UnauthorizedError(detail="Refresh token missing family claim")
+        # Register the new refresh jti in the family
+        new_refresh_payload = decode_token(refresh)
+        await register_token_in_family(family_id, new_refresh_payload.jti)
 
-    # Replay detection — if this jti was already used, someone stole a token
-    if await is_token_blacklisted(old_payload.jti):
-        logger.warning(
-            "Refresh token replay detected — invalidating family=%s user=%s",
-            family_id,
-            old_payload.sub,
-        )
-        await invalidate_token_family(family_id)
-        raise UnauthorizedError(
-            detail="Token reuse detected. All sessions revoked for security.",
-            error_code="TOKEN_REPLAY",
-        )
+        return access, refresh
 
-    # Verify user still exists and is active
-    user_repo = UserRepository(db)
-    user = await user_repo.get(uuid=uuid_pkg.UUID(old_payload.sub))
-    if user is None or not user.is_active:
-        await invalidate_token_family(family_id)
-        raise UnauthorizedError(detail="User not found or deactivated")
+    # ------------------------------------------------------------------
+    # Email verification
+    # ------------------------------------------------------------------
 
-    # Blacklist the old refresh token
-    remaining = old_payload.exp - int(datetime.now(UTC).timestamp())
-    if remaining > 0:
-        await blacklist_token(old_payload.jti, remaining)
+    async def verify_email(self, token: str) -> User:
+        """Decode a verification token and mark the user as verified.
 
-    # Issue new pair in the same family
-    access, refresh = create_token_pair(user.uuid, family_id=family_id)
+        Raises appropriate errors for invalid/expired tokens or missing users.
+        """
+        from jose import JWTError
+        from jose import jwt as jose_jwt
 
-    # Register the new refresh jti in the family
-    new_refresh_payload = decode_token(refresh)
-    await register_token_in_family(family_id, new_refresh_payload.jti)
+        try:
+            raw = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = TokenPayload(**raw)
+        except JWTError as exc:
+            raise BadRequestError(detail=f"Invalid or expired verification token: {exc}") from exc
 
-    return access, refresh
+        if payload.purpose != "email_verify":
+            raise BadRequestError(detail="Token is not an email verification token")
 
+        user = await self._user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
+        if user is None:
+            raise NotFoundError(detail="User not found")
 
-# ---------------------------------------------------------------------------
-# Email verification
-# ---------------------------------------------------------------------------
-async def verify_email(db: AsyncSession, token: str) -> User:
-    """Decode a verification token and mark the user as verified.
+        if user.is_verified:
+            raise BadRequestError(detail="Email is already verified")
 
-    Raises appropriate errors for invalid/expired tokens or missing users.
-    """
-    from jose import JWTError
-    from jose import jwt as jose_jwt
+        user.is_verified = True
+        return await self._user_repo.update(user)
 
-    try:
-        raw = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        payload = TokenPayload(**raw)
-    except JWTError as exc:
-        raise BadRequestError(detail=f"Invalid or expired verification token: {exc}") from exc
+    async def send_verification_email(self, email: str, user_uuid: uuid_pkg.UUID) -> None:
+        """Generate a verification token and send the verification email."""
+        token = create_email_verification_token(user_uuid)
+        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
 
-    if payload.purpose != "email_verify":
-        raise BadRequestError(detail="Token is not an email verification token")
-
-    user_repo = UserRepository(db)
-    user = await user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
-    if user is None:
-        raise NotFoundError(detail="User not found")
-
-    if user.is_verified:
-        raise BadRequestError(detail="Email is already verified")
-
-    user.is_verified = True
-    return await user_repo.update(user)
-
-
-async def send_verification_email(email: str, user_uuid: uuid_pkg.UUID) -> None:
-    """Generate a verification token and send the verification email."""
-    token = create_email_verification_token(user_uuid)
-    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-
-    html_body = f"""
+        html_body = f"""
     <html>
     <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Welcome to {settings.APP_NAME}!</h2>
@@ -239,116 +274,124 @@ async def send_verification_email(email: str, user_uuid: uuid_pkg.UUID) -> None:
     </html>
     """
 
-    await send_email(
-        to=email,
-        subject=f"Verify your email — {settings.APP_NAME}",
-        html_body=html_body,
-    )
+        await send_email(
+            to=email,
+            subject=f"Verify your email — {settings.APP_NAME}",
+            html_body=html_body,
+        )
+
+    # ------------------------------------------------------------------
+    # Password reset
+    # ------------------------------------------------------------------
+
+    async def request_password_reset(self, email: str) -> None:
+        """Generate a reset token and send a password reset email.
+
+        Anti-enumeration: does nothing (silently) if the email does not exist
+        or the account is inactive. The caller always returns a success message.
+        """
+        user = await self._user_repo.get(email=email.lower())
+
+        if user is None or not user.is_active:
+            return  # Silent — anti-enumeration (D-04)
+
+        if user.hashed_password is None:
+            # OAuth-only user — cannot reset a password that doesn't exist
+            return
+
+        token = await create_password_reset_token(user.uuid)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+
+        html_body = render_email_template(
+            "password_reset",
+            locale="en",  # TODO: use user locale preference when available
+            context={"reset_url": reset_url, "app_name": settings.APP_NAME},
+        )
+
+        await send_email(
+            to=user.email,
+            subject=f"Reset your password — {settings.APP_NAME}",
+            html_body=html_body,
+        )
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        """Validate a reset token and update the user's password.
+
+        Enforces single-use: the token's JTI is blacklisted after success.
+        """
+        from jose import JWTError
+        from jose import jwt as jose_jwt
+
+        try:
+            raw = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = TokenPayload(**raw)
+        except JWTError as exc:
+            raise BadRequestError(detail=f"Invalid or expired reset token: {exc}") from exc
+
+        if payload.purpose != "password_reset":
+            raise BadRequestError(detail="Token is not a password reset token")
+
+        # Single-use check
+        if await is_token_blacklisted(payload.jti):
+            raise BadRequestError(detail="This reset link has already been used")
+
+        user = await self._user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
+        if user is None:
+            raise NotFoundError(detail="User not found")
+
+        if not user.is_active:
+            raise BadRequestError(detail="Account is deactivated")
+
+        # Update password
+        user.hashed_password = hash_password(new_password)
+        await self._user_repo.update(user)
+
+        # Blacklist the reset token JTI (single-use enforcement)
+        remaining = payload.exp - int(datetime.now(UTC).timestamp())
+        if remaining > 0:
+            await blacklist_token(payload.jti, remaining)
+
+        logger.info("Password reset completed for user=%s", payload.sub)
+
+    # ------------------------------------------------------------------
+    # Superuser bootstrap
+    # ------------------------------------------------------------------
+
+    async def create_first_superuser(self) -> None:
+        """Create the initial admin account from env config (idempotent).
+
+        Reads ``ADMIN_EMAIL`` and ``ADMIN_PASSWORD`` from settings.
+        Does nothing if the admin already exists.
+        """
+        admin_email: str | None = getattr(settings, "ADMIN_EMAIL", None)
+        admin_password: str | None = getattr(settings, "ADMIN_PASSWORD", None)
+
+        if not admin_email or not admin_password:
+            logger.info("ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping superuser bootstrap.")
+            return
+
+        existing = await self._user_repo.get(email=admin_email.lower())
+        if existing is not None:
+            logger.info("Superuser %s already exists — skipping.", admin_email)
+            return
+
+        await self._user_repo.create_user(
+            email=admin_email,
+            hashed_password=hash_password(admin_password),
+            is_active=True,
+            is_verified=True,
+            is_superuser=True,
+        )
+        logger.info("Created superuser: %s", admin_email)
 
 
 # ---------------------------------------------------------------------------
-# Password reset
+# Backward-compatible module-level wrapper (for scripts/create_first_superuser.py)
 # ---------------------------------------------------------------------------
-async def request_password_reset(db: AsyncSession, email: str) -> None:
-    """Generate a reset token and send a password reset email.
 
-    Anti-enumeration: does nothing (silently) if the email does not exist
-    or the account is inactive. The caller always returns a success message.
-    """
-    user_repo = UserRepository(db)
-    user = await user_repo.get(email=email.lower())
-
-    if user is None or not user.is_active:
-        return  # Silent — anti-enumeration (D-04)
-
-    if user.hashed_password is None:
-        # OAuth-only user — cannot reset a password that doesn't exist
-        return
-
-    token = await create_password_reset_token(user.uuid)
-    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-
-    html_body = render_email_template(
-        "password_reset",
-        locale="en",  # TODO: use user locale preference when available
-        context={"reset_url": reset_url, "app_name": settings.APP_NAME},
-    )
-
-    await send_email(
-        to=user.email,
-        subject=f"Reset your password — {settings.APP_NAME}",
-        html_body=html_body,
-    )
-
-
-async def reset_password(db: AsyncSession, token: str, new_password: str) -> None:
-    """Validate a reset token and update the user's password.
-
-    Enforces single-use: the token's JTI is blacklisted after success.
-    """
-    from jose import JWTError
-    from jose import jwt as jose_jwt
-
-    try:
-        raw = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        payload = TokenPayload(**raw)
-    except JWTError as exc:
-        raise BadRequestError(detail=f"Invalid or expired reset token: {exc}") from exc
-
-    if payload.purpose != "password_reset":
-        raise BadRequestError(detail="Token is not a password reset token")
-
-    # Single-use check
-    if await is_token_blacklisted(payload.jti):
-        raise BadRequestError(detail="This reset link has already been used")
-
-    user_repo = UserRepository(db)
-    user = await user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
-    if user is None:
-        raise NotFoundError(detail="User not found")
-
-    if not user.is_active:
-        raise BadRequestError(detail="Account is deactivated")
-
-    # Update password
-    user.hashed_password = hash_password(new_password)
-    await user_repo.update(user)
-
-    # Blacklist the reset token JTI (single-use enforcement)
-    remaining = payload.exp - int(datetime.now(UTC).timestamp())
-    if remaining > 0:
-        await blacklist_token(payload.jti, remaining)
-
-    logger.info("Password reset completed for user=%s", payload.sub)
-
-
-# ---------------------------------------------------------------------------
-# Superuser bootstrap
-# ---------------------------------------------------------------------------
 async def create_first_superuser(db: AsyncSession) -> None:
-    """Create the initial admin account from env config (idempotent).
+    """Module-level wrapper for backward compatibility with bootstrap scripts.
 
-    Reads ``ADMIN_EMAIL`` and ``ADMIN_PASSWORD`` from settings.
-    Does nothing if the admin already exists.
+    Delegates to ``AuthService(db).create_first_superuser()``.
     """
-    admin_email: str | None = getattr(settings, "ADMIN_EMAIL", None)
-    admin_password: str | None = getattr(settings, "ADMIN_PASSWORD", None)
-
-    if not admin_email or not admin_password:
-        logger.info("ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping superuser bootstrap.")
-        return
-
-    user_repo = UserRepository(db)
-    existing = await user_repo.get(email=admin_email.lower())
-    if existing is not None:
-        logger.info("Superuser %s already exists — skipping.", admin_email)
-        return
-
-    await user_repo.create_user(
-        email=admin_email,
-        hashed_password=hash_password(admin_password),
-        is_active=True,
-        is_verified=True,
-        is_superuser=True,
-    )
-    logger.info("Created superuser: %s", admin_email)
+    await AuthService(db).create_first_superuser()
