@@ -67,7 +67,7 @@ async def get_current_active_user(
         ForbiddenError: If the user account is deactivated.
     """
     if not user.is_active:
-        raise ForbiddenError(detail="Account is deactivated")
+        raise ForbiddenError(detail="Account is deactivated", error_code="ACCOUNT_INACTIVE")
     return user
 
 
@@ -80,5 +80,5 @@ async def get_current_superuser(
         ForbiddenError: If the user is not a superuser.
     """
     if not user.is_superuser:
-        raise ForbiddenError(detail="Superuser privileges required")
+        raise ForbiddenError(detail="Superuser privileges required", error_code="SUPERUSER_REQUIRED")
     return user
