@@ -5,7 +5,7 @@ no real database, Redis, or SMTP needed.
 """
 
 import uuid as uuid_pkg
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -37,6 +37,14 @@ def _make_mock_user(
     return user
 
 
+def _make_mock_service() -> MagicMock:
+    """Create a mock AuthService instance with async methods pre-configured."""
+    service = MagicMock()
+    service.request_password_reset = AsyncMock()
+    service.reset_password = AsyncMock()
+    return service
+
+
 # ---------------------------------------------------------------------------
 # POST /api/v1/auth/forgot-password
 # ---------------------------------------------------------------------------
@@ -47,12 +55,11 @@ class TestForgotPassword:
         self, async_client: AsyncClient
     ):
         """Request reset for existing email returns success message."""
+        mock_service = _make_mock_service()
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.request_password_reset",
-                new_callable=AsyncMock,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/forgot-password",
@@ -65,12 +72,11 @@ class TestForgotPassword:
         self, async_client: AsyncClient
     ):
         """Anti-enumeration: non-existent email returns same message."""
+        mock_service = _make_mock_service()
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.request_password_reset",
-                new_callable=AsyncMock,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/forgot-password",
@@ -83,13 +89,12 @@ class TestForgotPassword:
         self, async_client: AsyncClient
     ):
         """Service exceptions are swallowed — anti-enumeration still holds."""
+        mock_service = _make_mock_service()
+        mock_service.request_password_reset = AsyncMock(side_effect=Exception("SMTP failure"))
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.request_password_reset",
-                new_callable=AsyncMock,
-                side_effect=Exception("SMTP failure"),
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/forgot-password",
@@ -110,12 +115,11 @@ class TestForgotPassword:
             if call_count > 3:
                 raise RateLimitedError(detail="Rate limit exceeded")
 
+        mock_service = _make_mock_service()
+
         with (
             patch("app.api.v1.auth.check_rate_limit", side_effect=_rate_limit_side_effect),
-            patch(
-                "app.api.v1.auth.auth_service.request_password_reset",
-                new_callable=AsyncMock,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             for _ in range(3):
                 r = await async_client.post(
@@ -139,12 +143,11 @@ class TestResetPassword:
 
     async def test_reset_with_valid_token(self, async_client: AsyncClient):
         """Valid reset token updates password successfully."""
+        mock_service = _make_mock_service()
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.reset_password",
-                new_callable=AsyncMock,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/reset-password",
@@ -155,13 +158,14 @@ class TestResetPassword:
 
     async def test_reset_with_used_token_fails(self, async_client: AsyncClient):
         """Using an already-used reset token returns 400."""
+        mock_service = _make_mock_service()
+        mock_service.reset_password = AsyncMock(
+            side_effect=BadRequestError(detail="This reset link has already been used")
+        )
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.reset_password",
-                new_callable=AsyncMock,
-                side_effect=BadRequestError(detail="This reset link has already been used"),
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/reset-password",
@@ -172,13 +176,14 @@ class TestResetPassword:
 
     async def test_reset_with_invalid_token_fails(self, async_client: AsyncClient):
         """Invalid JWT token returns 400."""
+        mock_service = _make_mock_service()
+        mock_service.reset_password = AsyncMock(
+            side_effect=BadRequestError(detail="Invalid or expired reset token")
+        )
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.reset_password",
-                new_callable=AsyncMock,
-                side_effect=BadRequestError(detail="Invalid or expired reset token"),
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/reset-password",
@@ -209,12 +214,11 @@ class TestResetPassword:
             if call_count > 5:
                 raise RateLimitedError(detail="Rate limit exceeded")
 
+        mock_service = _make_mock_service()
+
         with (
             patch("app.api.v1.auth.check_rate_limit", side_effect=_rate_limit_side_effect),
-            patch(
-                "app.api.v1.auth.auth_service.reset_password",
-                new_callable=AsyncMock,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             for _ in range(5):
                 r = await async_client.post(

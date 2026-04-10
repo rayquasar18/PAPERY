@@ -56,6 +56,22 @@ def _make_token_payload(
     )
 
 
+def _make_mock_service(mock_user: MagicMock | None = None) -> MagicMock:
+    """Create a mock AuthService instance with async methods pre-configured."""
+    service = MagicMock()
+    service.register_user = AsyncMock(return_value=mock_user)
+    service.authenticate_user = AsyncMock(return_value=mock_user)
+    service.logout_user = AsyncMock()
+    service.rotate_refresh_token = AsyncMock(return_value=("new-access-token", "new-refresh-token"))
+    service.verify_email = AsyncMock(return_value=mock_user)
+    service.send_verification_email = AsyncMock()
+    service.request_password_reset = AsyncMock()
+    service.reset_password = AsyncMock()
+    service.get_user_by_uuid = AsyncMock(return_value=mock_user)
+    service.get_user_by_email = AsyncMock(return_value=mock_user)
+    return service
+
+
 # ---------------------------------------------------------------------------
 # POST /api/v1/auth/register
 # ---------------------------------------------------------------------------
@@ -65,14 +81,13 @@ class TestRegisterRoute:
     async def test_register_success(self, async_client: AsyncClient):
         """Successful registration returns 201 with auth cookies."""
         mock_user = _make_mock_user(is_verified=False)
+        mock_service = _make_mock_service(mock_user)
+        mock_service.register_user = AsyncMock(return_value=mock_user)
+        mock_service.send_verification_email = AsyncMock()
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.register_user",
-                new_callable=AsyncMock,
-                return_value=mock_user,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
             patch(
                 "app.api.v1.auth.create_token_pair",
                 return_value=("mock-access-token", "mock-refresh-token"),
@@ -82,7 +97,6 @@ class TestRegisterRoute:
                 return_value=_make_token_payload(mock_user.uuid, token_type="refresh", family="fam-1"),
             ),
             patch("app.api.v1.auth.register_token_in_family", new_callable=AsyncMock),
-            patch("app.api.v1.auth.auth_service.send_verification_email", new_callable=AsyncMock),
         ):
             response = await async_client.post(
                 "/api/v1/auth/register",
@@ -99,13 +113,14 @@ class TestRegisterRoute:
 
     async def test_register_duplicate_email(self, async_client: AsyncClient):
         """Duplicate email returns 409 Conflict."""
+        mock_service = _make_mock_service()
+        mock_service.register_user = AsyncMock(
+            side_effect=ConflictError(detail="Email already registered")
+        )
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.register_user",
-                new_callable=AsyncMock,
-                side_effect=ConflictError(detail="Email already registered"),
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/register",
@@ -134,14 +149,12 @@ class TestLoginRoute:
     async def test_login_success(self, async_client: AsyncClient):
         """Successful login returns 200 with auth cookies."""
         mock_user = _make_mock_user()
+        mock_service = _make_mock_service(mock_user)
+        mock_service.authenticate_user = AsyncMock(return_value=mock_user)
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.authenticate_user",
-                new_callable=AsyncMock,
-                return_value=mock_user,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
             patch(
                 "app.api.v1.auth.create_token_pair",
                 return_value=("mock-access-token", "mock-refresh-token"),
@@ -166,13 +179,14 @@ class TestLoginRoute:
 
     async def test_login_invalid_credentials(self, async_client: AsyncClient):
         """Wrong credentials returns 401."""
+        mock_service = _make_mock_service()
+        mock_service.authenticate_user = AsyncMock(
+            side_effect=UnauthorizedError(detail="Invalid email or password")
+        )
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.auth_service.authenticate_user",
-                new_callable=AsyncMock,
-                side_effect=UnauthorizedError(detail="Invalid email or password"),
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/login",
@@ -193,8 +207,11 @@ class TestLogoutRoute:
         mock_user = _make_mock_user()
         access_payload = _make_token_payload(mock_user.uuid)
 
-        mock_repo_instance = AsyncMock()
-        mock_repo_instance.get = AsyncMock(return_value=mock_user)
+        mock_dep_repo = AsyncMock()
+        mock_dep_repo.get = AsyncMock(return_value=mock_user)
+
+        mock_service = _make_mock_service(mock_user)
+        mock_service.logout_user = AsyncMock()
 
         with (
             patch(
@@ -208,13 +225,13 @@ class TestLogoutRoute:
             ),
             patch(
                 "app.api.dependencies.UserRepository",
-                return_value=mock_repo_instance,
+                return_value=mock_dep_repo,
             ),
             patch(
                 "app.api.v1.auth.decode_token",
                 return_value=access_payload,
             ),
-            patch("app.api.v1.auth.auth_service.logout_user", new_callable=AsyncMock),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/logout",
@@ -244,23 +261,18 @@ class TestRefreshRoute:
             mock_user.uuid, token_type="refresh", family="fam-1"
         )
 
-        mock_repo_instance = AsyncMock()
-        mock_repo_instance.get = AsyncMock(return_value=mock_user)
+        mock_service = _make_mock_service(mock_user)
+        mock_service.rotate_refresh_token = AsyncMock(
+            return_value=("new-access-token", "new-refresh-token")
+        )
+        mock_service.get_user_by_uuid = AsyncMock(return_value=mock_user)
 
         with (
             patch(
                 "app.api.v1.auth.decode_token",
                 return_value=old_refresh_payload,
             ),
-            patch(
-                "app.api.v1.auth.auth_service.rotate_refresh_token",
-                new_callable=AsyncMock,
-                return_value=("new-access-token", "new-refresh-token"),
-            ),
-            patch(
-                "app.api.v1.auth.UserRepository",
-                return_value=mock_repo_instance,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/refresh",
@@ -335,12 +347,10 @@ class TestVerifyEmailRoute:
     async def test_verify_email_success(self, async_client: AsyncClient):
         """Valid token returns 200 with success message."""
         mock_user = _make_mock_user(is_verified=True)
+        mock_service = _make_mock_service(mock_user)
+        mock_service.verify_email = AsyncMock(return_value=mock_user)
 
-        with patch(
-            "app.api.v1.auth.auth_service.verify_email",
-            new_callable=AsyncMock,
-            return_value=mock_user,
-        ):
+        with patch("app.api.v1.auth.AuthService", return_value=mock_service):
             response = await async_client.post(
                 "/api/v1/auth/verify-email",
                 json={"token": "valid-verification-token"},
@@ -354,11 +364,12 @@ class TestVerifyEmailRoute:
         """Invalid verification token returns 400."""
         from app.core.exceptions import BadRequestError
 
-        with patch(
-            "app.api.v1.auth.auth_service.verify_email",
-            new_callable=AsyncMock,
-            side_effect=BadRequestError(detail="Invalid or expired verification token"),
-        ):
+        mock_service = _make_mock_service()
+        mock_service.verify_email = AsyncMock(
+            side_effect=BadRequestError(detail="Invalid or expired verification token")
+        )
+
+        with patch("app.api.v1.auth.AuthService", return_value=mock_service):
             response = await async_client.post(
                 "/api/v1/auth/verify-email",
                 json={"token": "expired-or-invalid-token"},
@@ -376,21 +387,13 @@ class TestResendVerificationRoute:
     async def test_resend_verification_success(self, async_client: AsyncClient):
         """Existing unverified user triggers email and returns 200."""
         mock_user = _make_mock_user(is_verified=False)
-        mock_send = AsyncMock()
-
-        mock_repo_instance = AsyncMock()
-        mock_repo_instance.get = AsyncMock(return_value=mock_user)
+        mock_service = _make_mock_service(mock_user)
+        mock_service.get_user_by_email = AsyncMock(return_value=mock_user)
+        mock_service.send_verification_email = AsyncMock()
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.UserRepository",
-                return_value=mock_repo_instance,
-            ),
-            patch(
-                "app.api.v1.auth.auth_service.send_verification_email",
-                mock_send,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/resend-verification",
@@ -398,19 +401,16 @@ class TestResendVerificationRoute:
             )
 
         assert response.status_code == 200
-        mock_send.assert_called_once()
+        mock_service.send_verification_email.assert_called_once()
 
     async def test_resend_verification_unknown_email_returns_200(self, async_client: AsyncClient):
         """Unknown email still returns 200 (anti-enumeration)."""
-        mock_repo_instance = AsyncMock()
-        mock_repo_instance.get = AsyncMock(return_value=None)
+        mock_service = _make_mock_service()
+        mock_service.get_user_by_email = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.UserRepository",
-                return_value=mock_repo_instance,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/resend-verification",
@@ -424,21 +424,13 @@ class TestResendVerificationRoute:
     async def test_resend_verification_already_verified(self, async_client: AsyncClient):
         """Already-verified user should NOT trigger email send."""
         mock_user = _make_mock_user(is_verified=True)
-        mock_send = AsyncMock()
-
-        mock_repo_instance = AsyncMock()
-        mock_repo_instance.get = AsyncMock(return_value=mock_user)
+        mock_service = _make_mock_service(mock_user)
+        mock_service.get_user_by_email = AsyncMock(return_value=mock_user)
+        mock_service.send_verification_email = AsyncMock()
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
-            patch(
-                "app.api.v1.auth.UserRepository",
-                return_value=mock_repo_instance,
-            ),
-            patch(
-                "app.api.v1.auth.auth_service.send_verification_email",
-                mock_send,
-            ),
+            patch("app.api.v1.auth.AuthService", return_value=mock_service),
         ):
             response = await async_client.post(
                 "/api/v1/auth/resend-verification",
@@ -446,4 +438,4 @@ class TestResendVerificationRoute:
             )
 
         assert response.status_code == 200
-        mock_send.assert_not_called()
+        mock_service.send_verification_email.assert_not_called()
