@@ -302,13 +302,29 @@ PAPERY is an AI-powered document intelligence platform built as a SaaS product. 
 - Every resource (project, document, chat_session) has ACL entries
 - Before any resource operation, ACL is checked: `crud_access_controls.exists(resource_uuid, user_id)`
 - Superusers bypass ACL checks
-### 3.4 CRUD / Repository Layer (`app/crud/`)
-```python
+### 3.4 Repository Layer (`app/repositories/`)
+
+**Rule: ALL database queries MUST go through repositories. Services MUST NOT use SQLAlchemy directly.**
+
 ```
-- `crud_users.py`, `crud_projects.py`, `crud_documents.py`
-- `crud_chat_session.py`, `crud_chat_message.py`
-- `crud_rate_limits.py`, `crud_tiers.py`
-- `access_controls.py` — special ACL-aware CRUD
+API → Service (business logic) → Repository (data access) → SQLAlchemy / DB
+```
+
+- `base.py` — `BaseRepository[ModelType]` generic async CRUD:
+  - `get(**filters)` — single record by any field: `repo.get(email="x")`, `repo.get(uuid=u)`
+  - `get_multi(skip, limit, **filters)` — paginated list with optional filters
+  - `create(instance)` — add + commit + refresh
+  - `update(instance)` — commit + refresh
+  - `soft_delete(instance)` — set `deleted_at` timestamp
+  - `delete(instance)` — hard delete (permanent, use with caution)
+  - Soft-delete filtering (`deleted_at IS NULL`) is applied automatically
+- `user_repository.py` — `UserRepository(BaseRepository[User])` with `create_user(...)` convenience method
+- Future: `project_repository.py`, `document_repository.py`, etc.
+
+**When adding a new model:**
+1. Create `app/repositories/<model>_repository.py` inheriting `BaseRepository[Model]`
+2. Add domain-specific convenience methods (like `create_user`) only if needed
+3. Use `get(**filters)` for all lookups — do NOT create `get_by_<field>` methods
 ### 3.5 Schema Layer (`app/schemas/`)
 | Schema suffix | Purpose |
 |---------------|---------|
@@ -324,25 +340,43 @@ PAPERY is an AI-powered document intelligence platform built as a SaaS product. 
 ```
 ```
 ```
-### 3.7 Core Services (`app/core/`)
+### 3.7 Core & Infrastructure (`app/core/`, `app/configs/`, `app/infra/`, `app/services/`, `app/utils/`, `app/worker/`)
+
+**`app/core/`** — Foundation only (DB + exceptions):
 | Module | Responsibility |
 |--------|---------------|
-| `config.py` | Pydantic-settings config classes, composed into `settings` object |
-| `security.py` | JWT encode/decode, bcrypt hashing, OAuth2 scheme |
-| `db/database.py` | SQLAlchemy async engine + session factory |
-| `db/redis.py` | Redis singleton (cache, queue, rate limit — three logical uses) |
-| `db/minio.py` | MinIO singleton client, bucket management, presigned URL generation |
-| `db/models.py` | Shared SQLAlchemy mixins (UUID, Timestamp, SoftDelete) |
-| `db/token_blacklist.py` | Logout token invalidation via Redis |
-| `utils/cache.py` | Response caching decorators / helpers |
-| `utils/queue.py` | ARQ task queue helpers |
-| `utils/rate_limit.py` | Redis rate limit enforcement logic |
-| `utils/email.py` | SMTP email (account verification, password reset) |
-| `worker/settings.py` | ARQ WorkerSettings for background job configuration |
-| `worker/functions.py` | Background task function definitions |
-| `middleware/` | Client-side HTTP cache headers middleware |
-| `exceptions/` | Custom HTTP exceptions (401, 403, 404, 409, 429) |
-| `logger.py` | Structured logging setup |
+| `db/session.py` | SQLAlchemy async engine + session factory |
+| `exceptions/` | PaperyHTTPException + convenience subclasses (401, 403, 404, 409, 429) |
+| `security.py` | JWT encode/decode, bcrypt hashing, token blacklist, token families |
+
+**`app/configs/`** — Pydantic-settings config classes:
+| Module | Responsibility |
+|--------|---------------|
+| `app.py`, `database.py`, `redis.py`, `minio.py`, `security.py`, `email.py`, `cors.py`, `admin.py` | Composed into `settings` singleton |
+
+**`app/infra/`** — External service clients:
+| Module | Responsibility |
+|--------|---------------|
+| `redis/client.py` | Redis singleton (cache, queue, rate limit — three logical DBs) |
+| `minio/client.py` | MinIO singleton, bucket management, presigned URLs |
+
+**`app/services/`** — Business logic layer (calls repositories, raises domain exceptions):
+| Module | Responsibility |
+|--------|---------------|
+| `auth_service.py` | Registration, login, logout, token rotation, email verification, superuser bootstrap |
+
+**`app/utils/`** — Shared utilities:
+| Module | Responsibility |
+|--------|---------------|
+| `email.py` | SMTP email delivery |
+| `rate_limit.py` | Redis rate limit enforcement |
+
+**`app/middleware/`** — HTTP middleware:
+| Module | Responsibility |
+|--------|---------------|
+| `request_id.py` | X-Request-ID header injection |
+
+**`app/worker/`** — Background job definitions (ARQ):
 ### 3.8 Migrations (`migrations/`)
 - `env.py` — async migration runner
 - `versions/` — gitignored; scripts in `scripts/` bootstrap initial data
