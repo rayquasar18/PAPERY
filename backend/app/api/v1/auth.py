@@ -10,17 +10,23 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.configs import settings
 from app.core.db.session import get_session
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import NotFoundError, UnauthorizedError
 from app.core.security import (
+    create_oauth_state,
     create_token_pair,
     decode_token,
     register_token_in_family,
+    track_user_family,
+    validate_oauth_state,
 )
+from app.infra.oauth.github import GitHubOAuthProvider
+from app.infra.oauth.google import GoogleOAuthProvider
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -33,6 +39,7 @@ from app.schemas.auth import (
     UserPublicRead,
     VerifyEmailRequest,
 )
+import app.services.auth_service as auth_service
 from app.services.auth_service import AuthService
 from app.utils.rate_limit import check_rate_limit
 
@@ -121,6 +128,7 @@ async def register(
     await register_token_in_family(
         refresh_payload.family, refresh_payload.jti  # type: ignore[arg-type]
     )
+    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
 
     _set_auth_cookies(response, access_token, refresh_token)
 
@@ -162,6 +170,7 @@ async def login(
     await register_token_in_family(
         refresh_payload.family, refresh_payload.jti  # type: ignore[arg-type]
     )
+    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
 
     _set_auth_cookies(response, access_token, refresh_token)
 
@@ -365,3 +374,168 @@ async def reset_password(
     await service.reset_password(body.token, body.new_password)
 
     return MessageResponse(message="Password has been reset successfully.")
+
+
+# ---------------------------------------------------------------------------
+# OAuth provider helpers
+# ---------------------------------------------------------------------------
+def _get_google_provider() -> GoogleOAuthProvider:
+    """Create a GoogleOAuthProvider; raises 404 if not configured."""
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        raise NotFoundError(detail="Google OAuth is not configured")
+    return GoogleOAuthProvider(
+        client_id=settings.GOOGLE_CLIENT_ID,
+        client_secret=settings.GOOGLE_CLIENT_SECRET,
+        redirect_uri=f"{settings.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/google/callback",
+    )
+
+
+def _get_github_provider() -> GitHubOAuthProvider:
+    """Create a GitHubOAuthProvider; raises 404 if not configured."""
+    if not settings.GITHUB_CLIENT_ID or not settings.GITHUB_CLIENT_SECRET:
+        raise NotFoundError(detail="GitHub OAuth is not configured")
+    return GitHubOAuthProvider(
+        client_id=settings.GITHUB_CLIENT_ID,
+        client_secret=settings.GITHUB_CLIENT_SECRET,
+        redirect_uri=f"{settings.OAUTH_REDIRECT_BASE_URL}/api/v1/auth/github/callback",
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. GET /auth/google — initiate Google OAuth
+# ---------------------------------------------------------------------------
+@router.get("/google")
+async def google_auth(request: Request) -> RedirectResponse:
+    """Redirect user to Google OAuth consent page.
+
+    Rate limit: 10 requests / minute per IP.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(f"auth:oauth:google:{client_ip}", max_requests=10, window_seconds=60)
+
+    provider = _get_google_provider()
+    state = await create_oauth_state("google")
+    auth_url = provider.get_authorization_url(state)
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# 11. GET /auth/google/callback — Google OAuth callback
+# ---------------------------------------------------------------------------
+@router.get("/google/callback")
+async def google_callback(
+    request: Request,
+    response: Response,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Handle Google OAuth callback — exchange code, create/link user, set cookies.
+
+    On success: redirects to frontend dashboard with auth cookies set.
+    On failure: redirects to frontend login with error query param.
+    """
+    frontend_url = settings.FRONTEND_URL
+
+    if error:
+        logger.warning("Google OAuth error: %s", error)
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_denied", status_code=302)
+
+    if not code or not state:
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_invalid", status_code=302)
+
+    # CSRF validation
+    if not await validate_oauth_state("google", state):
+        logger.warning("Google OAuth: invalid state parameter")
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_csrf", status_code=302)
+
+    try:
+        provider = _get_google_provider()
+        access_token = await provider.get_access_token(code)
+        user_info = await provider.get_user_info(access_token)
+        user = await auth_service.oauth_login_or_register(db, user_info)
+    except Exception:
+        logger.exception("Google OAuth callback failed")
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
+
+    # Issue JWT token pair
+    access_jwt, refresh_jwt = create_token_pair(user.uuid)
+    refresh_payload = decode_token(refresh_jwt)
+    await register_token_in_family(refresh_payload.family, refresh_payload.jti)  # type: ignore[arg-type]
+    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
+
+    # Set cookies on redirect response
+    redirect = RedirectResponse(url=f"{frontend_url}/dashboard", status_code=302)
+    _set_auth_cookies(redirect, access_jwt, refresh_jwt)
+    return redirect
+
+
+# ---------------------------------------------------------------------------
+# 12. GET /auth/github — initiate GitHub OAuth
+# ---------------------------------------------------------------------------
+@router.get("/github")
+async def github_auth(request: Request) -> RedirectResponse:
+    """Redirect user to GitHub OAuth consent page.
+
+    Rate limit: 10 requests / minute per IP.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(f"auth:oauth:github:{client_ip}", max_requests=10, window_seconds=60)
+
+    provider = _get_github_provider()
+    state = await create_oauth_state("github")
+    auth_url = provider.get_authorization_url(state)
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# 13. GET /auth/github/callback — GitHub OAuth callback
+# ---------------------------------------------------------------------------
+@router.get("/github/callback")
+async def github_callback(
+    request: Request,
+    response: Response,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Handle GitHub OAuth callback — exchange code, create/link user, set cookies.
+
+    On success: redirects to frontend dashboard with auth cookies set.
+    On failure: redirects to frontend login with error query param.
+    """
+    frontend_url = settings.FRONTEND_URL
+
+    if error:
+        logger.warning("GitHub OAuth error: %s", error)
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_denied", status_code=302)
+
+    if not code or not state:
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_invalid", status_code=302)
+
+    # CSRF validation
+    if not await validate_oauth_state("github", state):
+        logger.warning("GitHub OAuth: invalid state parameter")
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_csrf", status_code=302)
+
+    try:
+        provider = _get_github_provider()
+        access_token = await provider.get_access_token(code)
+        user_info = await provider.get_user_info(access_token)
+        user = await auth_service.oauth_login_or_register(db, user_info)
+    except Exception:
+        logger.exception("GitHub OAuth callback failed")
+        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
+
+    # Issue JWT token pair
+    access_jwt, refresh_jwt = create_token_pair(user.uuid)
+    refresh_payload = decode_token(refresh_jwt)
+    await register_token_in_family(refresh_payload.family, refresh_payload.jti)  # type: ignore[arg-type]
+    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
+
+    # Set cookies on redirect response
+    redirect = RedirectResponse(url=f"{frontend_url}/dashboard", status_code=302)
+    _set_auth_cookies(redirect, access_jwt, refresh_jwt)
+    return redirect
