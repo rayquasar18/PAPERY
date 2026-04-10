@@ -44,6 +44,39 @@ class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Password reset request payload."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Password reset submission payload."""
+
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    """Authenticated password change payload."""
+
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_must_differ(self) -> ChangePasswordRequest:
+        """Reject if current and new passwords are identical."""
+        if self.current_password == self.new_password:
+            raise ValueError("New password must be different from current password")
+        return self
+
+
+class SetPasswordRequest(BaseModel):
+    """Set password for OAuth-only users (no current password required)."""
+
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
