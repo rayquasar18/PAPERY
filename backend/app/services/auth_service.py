@@ -34,6 +34,7 @@ from app.core.security import (
     create_token_pair,
     decode_token,
     hash_password,
+    invalidate_all_user_sessions,
     invalidate_token_family,
     is_token_blacklisted,
     register_token_in_family,
@@ -482,6 +483,72 @@ async def oauth_login_or_register(
         new_user.email,
     )
     return new_user
+
+
+# ---------------------------------------------------------------------------
+# Change password (authenticated user with existing password)
+# ---------------------------------------------------------------------------
+async def change_password(
+    db: AsyncSession,
+    user: User,
+    current_password: str,
+    new_password: str,
+) -> None:
+    """Change password for a user who has an existing password.
+
+    Validates the current password, updates to the new one, and
+    invalidates ALL active sessions (D-17: forces re-login everywhere).
+
+    Raises:
+        BadRequestError: If the user has no password (OAuth-only).
+        UnauthorizedError: If the current password is incorrect.
+    """
+    if user.hashed_password is None:
+        raise BadRequestError(
+            detail="This account uses social login and has no password set. "
+            "Use the set-password endpoint instead.",
+        )
+
+    if not verify_password(current_password, user.hashed_password):
+        raise UnauthorizedError(detail="Current password is incorrect")
+
+    user_repo = UserRepository(db)
+    user.hashed_password = hash_password(new_password)
+    await user_repo.update(user)
+
+    # Invalidate ALL sessions for this user (D-17)
+    await invalidate_all_user_sessions(user.uuid)
+
+    logger.info("Password changed for user=%s — all sessions invalidated", user.uuid)
+
+
+# ---------------------------------------------------------------------------
+# Set password (OAuth-only users — no current password)
+# ---------------------------------------------------------------------------
+async def set_password(
+    db: AsyncSession,
+    user: User,
+    new_password: str,
+) -> None:
+    """Set a password for an OAuth-only user (no existing password).
+
+    Only allowed when user.hashed_password is NULL. Does NOT invalidate
+    existing sessions (user has no password-based sessions to protect).
+
+    Raises:
+        BadRequestError: If the user already has a password set.
+    """
+    if user.hashed_password is not None:
+        raise BadRequestError(
+            detail="Account already has a password. "
+            "Use the change-password endpoint instead.",
+        )
+
+    user_repo = UserRepository(db)
+    user.hashed_password = hash_password(new_password)
+    await user_repo.update(user)
+
+    logger.info("Password set for OAuth-only user=%s", user.uuid)
 
 
 # ---------------------------------------------------------------------------
