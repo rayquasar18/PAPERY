@@ -12,7 +12,7 @@ from jose import jwt
 
 from app.configs import settings
 from app.core.exceptions import UnauthorizedError
-from app.services.auth_service import (
+from app.core.security import (
     BLACKLIST_PREFIX,
     FAMILY_PREFIX,
     blacklist_token,
@@ -43,7 +43,7 @@ class TestPasswordHashing:
         """hash_password should delegate to pwd_context.hash."""
         mock_ctx = MagicMock()
         mock_ctx.hash.return_value = "$2b$12$mocked_hash_value"
-        with patch("app.services.auth_service.pwd_context", mock_ctx):
+        with patch("app.core.security.pwd_context", mock_ctx):
             result = hash_password("mypassword")
         mock_ctx.hash.assert_called_once_with("mypassword")
         assert result == "$2b$12$mocked_hash_value"
@@ -52,7 +52,7 @@ class TestPasswordHashing:
         """verify_password should delegate to pwd_context.verify."""
         mock_ctx = MagicMock()
         mock_ctx.verify.return_value = True
-        with patch("app.services.auth_service.pwd_context", mock_ctx):
+        with patch("app.core.security.pwd_context", mock_ctx):
             result = verify_password("correcthorse", "$2b$12$somehash")
         mock_ctx.verify.assert_called_once_with("correcthorse", "$2b$12$somehash")
         assert result is True
@@ -61,7 +61,7 @@ class TestPasswordHashing:
         """verify_password should return False for wrong password."""
         mock_ctx = MagicMock()
         mock_ctx.verify.return_value = False
-        with patch("app.services.auth_service.pwd_context", mock_ctx):
+        with patch("app.core.security.pwd_context", mock_ctx):
             result = verify_password("wrongpassword", "$2b$12$somehash")
         assert result is False
 
@@ -219,7 +219,7 @@ class TestTokenBlacklist:
     async def test_blacklist_token_sets_key(self):
         """blacklist_token should call setex with correct key and TTL."""
         mock_redis = AsyncMock()
-        with patch("app.services.auth_service.cache_client", mock_redis):
+        with patch("app.core.security.cache_client", mock_redis):
             await blacklist_token("test-jti-123", 1800)
         mock_redis.setex.assert_called_once_with(
             f"{BLACKLIST_PREFIX}test-jti-123",
@@ -231,7 +231,7 @@ class TestTokenBlacklist:
         """is_token_blacklisted should return True when key exists."""
         mock_redis = AsyncMock()
         mock_redis.exists = AsyncMock(return_value=1)
-        with patch("app.services.auth_service.cache_client", mock_redis):
+        with patch("app.core.security.cache_client", mock_redis):
             result = await is_token_blacklisted("revoked-jti")
         assert result is True
         mock_redis.exists.assert_called_once_with(f"{BLACKLIST_PREFIX}revoked-jti")
@@ -240,14 +240,14 @@ class TestTokenBlacklist:
         """is_token_blacklisted should return False when key does not exist."""
         mock_redis = AsyncMock()
         mock_redis.exists = AsyncMock(return_value=0)
-        with patch("app.services.auth_service.cache_client", mock_redis):
+        with patch("app.core.security.cache_client", mock_redis):
             result = await is_token_blacklisted("valid-jti")
         assert result is False
 
     async def test_register_token_in_family(self):
         """register_token_in_family should sadd jti and set TTL."""
         mock_redis = AsyncMock()
-        with patch("app.services.auth_service.cache_client", mock_redis):
+        with patch("app.core.security.cache_client", mock_redis):
             await register_token_in_family("family-abc", "jti-xyz")
         expected_key = f"{FAMILY_PREFIX}family-abc"
         mock_redis.sadd.assert_called_once_with(expected_key, "jti-xyz")

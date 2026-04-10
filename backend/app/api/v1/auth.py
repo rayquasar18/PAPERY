@@ -17,6 +17,11 @@ from app.api.dependencies import get_current_user
 from app.configs import settings
 from app.core.db.session import get_session
 from app.core.exceptions import UnauthorizedError
+from app.core.security import (
+    create_token_pair,
+    decode_token,
+    register_token_in_family,
+)
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -107,11 +112,11 @@ async def register(
 
     user = await auth_service.register_user(db, body.email, body.password)
 
-    access_token, refresh_token = auth_service.create_token_pair(user.uuid)
+    access_token, refresh_token = create_token_pair(user.uuid)
 
     # Register the refresh token in its family for replay detection
-    refresh_payload = auth_service.decode_token(refresh_token)
-    await auth_service.register_token_in_family(
+    refresh_payload = decode_token(refresh_token)
+    await register_token_in_family(
         refresh_payload.family, refresh_payload.jti  # type: ignore[arg-type]
     )
 
@@ -148,10 +153,10 @@ async def login(
 
     user = await auth_service.authenticate_user(db, body.email, body.password)
 
-    access_token, refresh_token = auth_service.create_token_pair(user.uuid)
+    access_token, refresh_token = create_token_pair(user.uuid)
 
-    refresh_payload = auth_service.decode_token(refresh_token)
-    await auth_service.register_token_in_family(
+    refresh_payload = decode_token(refresh_token)
+    await register_token_in_family(
         refresh_payload.family, refresh_payload.jti  # type: ignore[arg-type]
     )
 
@@ -181,11 +186,11 @@ async def logout(
 
     # Blacklist the access token (+ family if present)
     if access_token:
-        access_payload = auth_service.decode_token(access_token)
+        access_payload = decode_token(access_token)
         refresh_jti: str | None = None
         if refresh_token:
             try:
-                refresh_payload = auth_service.decode_token(refresh_token)
+                refresh_payload = decode_token(refresh_token)
                 refresh_jti = refresh_payload.jti
             except Exception:
                 logger.debug("Refresh token decode failed during logout — likely expired")
@@ -214,7 +219,7 @@ async def refresh(
     if not token:
         raise UnauthorizedError(detail="Refresh token missing")
 
-    old_payload = auth_service.decode_token(token)
+    old_payload = decode_token(token)
 
     access_token, refresh_token = await auth_service.rotate_refresh_token(db, old_payload)
 

@@ -74,14 +74,14 @@ class TestRegisterRoute:
                 return_value=mock_user,
             ),
             patch(
-                "app.api.v1.auth.auth_service.create_token_pair",
+                "app.api.v1.auth.create_token_pair",
                 return_value=("mock-access-token", "mock-refresh-token"),
             ),
             patch(
-                "app.api.v1.auth.auth_service.decode_token",
+                "app.api.v1.auth.decode_token",
                 return_value=_make_token_payload(mock_user.uuid, token_type="refresh", family="fam-1"),
             ),
-            patch("app.api.v1.auth.auth_service.register_token_in_family", new_callable=AsyncMock),
+            patch("app.api.v1.auth.register_token_in_family", new_callable=AsyncMock),
             patch("app.api.v1.auth.auth_service.send_verification_email", new_callable=AsyncMock),
         ):
             response = await async_client.post(
@@ -143,14 +143,14 @@ class TestLoginRoute:
                 return_value=mock_user,
             ),
             patch(
-                "app.api.v1.auth.auth_service.create_token_pair",
+                "app.api.v1.auth.create_token_pair",
                 return_value=("mock-access-token", "mock-refresh-token"),
             ),
             patch(
-                "app.api.v1.auth.auth_service.decode_token",
+                "app.api.v1.auth.decode_token",
                 return_value=_make_token_payload(mock_user.uuid, token_type="refresh", family="fam-1"),
             ),
-            patch("app.api.v1.auth.auth_service.register_token_in_family", new_callable=AsyncMock),
+            patch("app.api.v1.auth.register_token_in_family", new_callable=AsyncMock),
         ):
             response = await async_client.post(
                 "/api/v1/auth/login",
@@ -195,11 +195,11 @@ class TestLogoutRoute:
 
         with (
             patch(
-                "app.api.dependencies.auth_service.decode_token",
+                "app.api.dependencies.decode_token",
                 return_value=access_payload,
             ),
             patch(
-                "app.api.dependencies.auth_service.is_token_blacklisted",
+                "app.api.dependencies.is_token_blacklisted",
                 new_callable=AsyncMock,
                 return_value=False,
             ),
@@ -209,7 +209,7 @@ class TestLogoutRoute:
                 return_value=mock_user,
             ),
             patch(
-                "app.api.v1.auth.auth_service.decode_token",
+                "app.api.v1.auth.decode_token",
                 return_value=access_payload,
             ),
             patch("app.api.v1.auth.auth_service.logout_user", new_callable=AsyncMock),
@@ -244,7 +244,7 @@ class TestRefreshRoute:
 
         with (
             patch(
-                "app.api.v1.auth.auth_service.decode_token",
+                "app.api.v1.auth.decode_token",
                 return_value=old_refresh_payload,
             ),
             patch(
@@ -288,11 +288,11 @@ class TestGetMeRoute:
 
         with (
             patch(
-                "app.api.dependencies.auth_service.decode_token",
+                "app.api.dependencies.decode_token",
                 return_value=access_payload,
             ),
             patch(
-                "app.api.dependencies.auth_service.is_token_blacklisted",
+                "app.api.dependencies.is_token_blacklisted",
                 new_callable=AsyncMock,
                 return_value=False,
             ),
