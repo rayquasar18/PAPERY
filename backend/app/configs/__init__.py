@@ -9,6 +9,7 @@ from app.configs.cors import CorsConfig
 from app.configs.database import DatabaseConfig
 from app.configs.email import EmailConfig
 from app.configs.minio import MinioConfig
+from app.configs.oauth import OAuthConfig
 from app.configs.redis import RedisConfig
 from app.configs.security import SecurityConfig
 
@@ -22,6 +23,7 @@ class AppSettings(
     EmailConfig,
     CorsConfig,
     AdminConfig,
+    OAuthConfig,
 ):
     model_config = SettingsConfigDict(
         env_file=".env",
