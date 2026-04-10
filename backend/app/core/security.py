@@ -112,6 +112,7 @@ def create_email_verification_token(user_uuid: uuid_pkg.UUID) -> str:
 BLACKLIST_PREFIX = "blacklist:jti:"
 FAMILY_PREFIX = "token_family:"
 RESET_JTI_PREFIX = "reset_jti:"
+OAUTH_STATE_PREFIX = "oauth_state:"
 
 
 def _redis() -> object:
@@ -201,3 +202,30 @@ async def create_password_reset_token(user_uuid: uuid_pkg.UUID) -> str:
     await client.setex(reset_key, 3600, jti)  # type: ignore[union-attr]
 
     return token
+
+
+# ---------------------------------------------------------------------------
+# OAuth CSRF state (Redis)
+# ---------------------------------------------------------------------------
+async def create_oauth_state(provider: str) -> str:
+    """Generate a random state string and store it in Redis (10-minute TTL).
+
+    Returns the state string to include in the OAuth authorization URL.
+    """
+    client = _redis()
+    state = str(uuid_pkg.uuid4())
+    key = f"{OAUTH_STATE_PREFIX}{provider}:{state}"
+    await client.setex(key, 600, "1")  # type: ignore[union-attr]  # 10-minute TTL
+    return state
+
+
+async def validate_oauth_state(provider: str, state: str) -> bool:
+    """Validate and consume an OAuth state parameter (single-use).
+
+    Returns True if the state was valid and has been consumed.
+    Returns False if the state is missing, expired, or already used.
+    """
+    client = _redis()
+    key = f"{OAUTH_STATE_PREFIX}{provider}:{state}"
+    result = await client.delete(key)  # type: ignore[union-attr]
+    return result > 0  # 1 if key existed and was deleted, 0 otherwise
