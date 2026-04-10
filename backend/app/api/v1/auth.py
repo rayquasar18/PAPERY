@@ -23,6 +23,7 @@ from app.core.security import (
     register_token_in_family,
 )
 from app.models.user import User
+from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     AuthResponse,
     LoginRequest,
@@ -226,7 +227,8 @@ async def refresh(
     _set_auth_cookies(response, access_token, refresh_token)
 
     # Load user for response body
-    user = await auth_service.get_user_by_uuid(db, uuid_pkg.UUID(old_payload.sub))
+    user_repo = UserRepository(db)
+    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(old_payload.sub))
     if user is None:
         raise UnauthorizedError(detail="User not found")
 
@@ -283,7 +285,8 @@ async def resend_verification(
     )
 
     # Anti-enumeration: always return success, even if user doesn't exist
-    user = await auth_service.get_user_by_email(db, body.email)
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(body.email)
     if user is not None and not user.is_verified:
         try:
             await auth_service.send_verification_email(user.email, user.uuid)

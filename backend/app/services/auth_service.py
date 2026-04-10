@@ -3,6 +3,9 @@
 Orchestrates registration, login, logout, token rotation, email verification,
 and superuser bootstrap. Delegates security primitives (password hashing,
 JWT lifecycle, token blacklist) to ``app.core.security``.
+
+Data access is handled by ``app.repositories.UserRepository`` — this service
+contains only business logic, validation, and orchestration.
 """
 
 from __future__ import annotations
@@ -11,7 +14,6 @@ import logging
 import uuid as uuid_pkg
 from datetime import UTC, datetime
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.configs import settings
@@ -33,27 +35,11 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+from app.repositories.user_repository import UserRepository
 from app.schemas.auth import TokenPayload
 from app.utils.email import send_email
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# User helpers
-# ---------------------------------------------------------------------------
-async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    """Fetch a non-deleted user by email (case-insensitive)."""
-    stmt = select(User).where(User.email == email.lower(), User.deleted_at.is_(None))
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def get_user_by_uuid(db: AsyncSession, user_uuid: uuid_pkg.UUID) -> User | None:
-    """Fetch a non-deleted user by public UUID."""
-    stmt = select(User).where(User.uuid == user_uuid, User.deleted_at.is_(None))
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
 
 
 async def register_user(db: AsyncSession, email: str, password: str) -> User:
@@ -63,7 +49,8 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
     If the existing account is OAuth-only (no password), hints the user
     to log in via their OAuth provider instead.
     """
-    existing = await get_user_by_email(db, email)
+    user_repo = UserRepository(db)
+    existing = await user_repo.get_by_email(email)
     if existing is not None:
         if existing.hashed_password is None:
             raise ConflictError(
@@ -72,17 +59,13 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
             )
         raise ConflictError(detail="Email already registered")
 
-    user = User(
-        email=email.lower(),
+    return await user_repo.create_user(
+        email=email,
         hashed_password=hash_password(password),
         is_active=True,
         is_verified=False,
         is_superuser=False,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
@@ -90,7 +73,8 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
     Raises ``UnauthorizedError`` for invalid credentials or inactive accounts.
     """
-    user = await get_user_by_email(db, email)
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(email)
     if user is None:
         raise UnauthorizedError(detail="Invalid email or password")
 
@@ -173,7 +157,8 @@ async def rotate_refresh_token(
         )
 
     # Verify user still exists and is active
-    user = await get_user_by_uuid(db, uuid_pkg.UUID(old_payload.sub))
+    user_repo = UserRepository(db)
+    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(old_payload.sub))
     if user is None or not user.is_active:
         await invalidate_token_family(family_id)
         raise UnauthorizedError(detail="User not found or deactivated")
@@ -213,7 +198,8 @@ async def verify_email(db: AsyncSession, token: str) -> User:
     if payload.purpose != "email_verify":
         raise BadRequestError(detail="Token is not an email verification token")
 
-    user = await get_user_by_uuid(db, uuid_pkg.UUID(payload.sub))
+    user_repo = UserRepository(db)
+    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(payload.sub))
     if user is None:
         raise NotFoundError(detail="User not found")
 
@@ -221,9 +207,7 @@ async def verify_email(db: AsyncSession, token: str) -> User:
         raise BadRequestError(detail="Email is already verified")
 
     user.is_verified = True
-    await db.commit()
-    await db.refresh(user)
-    return user
+    return await user_repo.update(user)
 
 
 async def send_verification_email(email: str, user_uuid: uuid_pkg.UUID) -> None:
@@ -277,18 +261,17 @@ async def create_first_superuser(db: AsyncSession) -> None:
         logger.info("ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping superuser bootstrap.")
         return
 
-    existing = await get_user_by_email(db, admin_email)
+    user_repo = UserRepository(db)
+    existing = await user_repo.get_by_email(admin_email)
     if existing is not None:
         logger.info("Superuser %s already exists — skipping.", admin_email)
         return
 
-    user = User(
-        email=admin_email.lower(),
+    await user_repo.create_user(
+        email=admin_email,
         hashed_password=hash_password(admin_password),
         is_active=True,
         is_verified=True,
         is_superuser=True,
     )
-    db.add(user)
-    await db.commit()
     logger.info("Created superuser: %s", admin_email)

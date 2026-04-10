@@ -193,6 +193,9 @@ class TestLogoutRoute:
         mock_user = _make_mock_user()
         access_payload = _make_token_payload(mock_user.uuid)
 
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+
         with (
             patch(
                 "app.api.dependencies.decode_token",
@@ -204,9 +207,8 @@ class TestLogoutRoute:
                 return_value=False,
             ),
             patch(
-                "app.api.dependencies.auth_service.get_user_by_uuid",
-                new_callable=AsyncMock,
-                return_value=mock_user,
+                "app.api.dependencies.UserRepository",
+                return_value=mock_repo_instance,
             ),
             patch(
                 "app.api.v1.auth.decode_token",
@@ -242,6 +244,9 @@ class TestRefreshRoute:
             mock_user.uuid, token_type="refresh", family="fam-1"
         )
 
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+
         with (
             patch(
                 "app.api.v1.auth.decode_token",
@@ -253,9 +258,8 @@ class TestRefreshRoute:
                 return_value=("new-access-token", "new-refresh-token"),
             ),
             patch(
-                "app.api.v1.auth.auth_service.get_user_by_uuid",
-                new_callable=AsyncMock,
-                return_value=mock_user,
+                "app.api.v1.auth.UserRepository",
+                return_value=mock_repo_instance,
             ),
         ):
             response = await async_client.post(
@@ -286,6 +290,9 @@ class TestGetMeRoute:
         mock_user = _make_mock_user()
         access_payload = _make_token_payload(mock_user.uuid)
 
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+
         with (
             patch(
                 "app.api.dependencies.decode_token",
@@ -297,9 +304,8 @@ class TestGetMeRoute:
                 return_value=False,
             ),
             patch(
-                "app.api.dependencies.auth_service.get_user_by_uuid",
-                new_callable=AsyncMock,
-                return_value=mock_user,
+                "app.api.dependencies.UserRepository",
+                return_value=mock_repo_instance,
             ),
         ):
             response = await async_client.get(
@@ -372,12 +378,14 @@ class TestResendVerificationRoute:
         mock_user = _make_mock_user(is_verified=False)
         mock_send = AsyncMock()
 
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_by_email = AsyncMock(return_value=mock_user)
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
             patch(
-                "app.api.v1.auth.auth_service.get_user_by_email",
-                new_callable=AsyncMock,
-                return_value=mock_user,
+                "app.api.v1.auth.UserRepository",
+                return_value=mock_repo_instance,
             ),
             patch(
                 "app.api.v1.auth.auth_service.send_verification_email",
@@ -394,12 +402,14 @@ class TestResendVerificationRoute:
 
     async def test_resend_verification_unknown_email_returns_200(self, async_client: AsyncClient):
         """Unknown email still returns 200 (anti-enumeration)."""
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_by_email = AsyncMock(return_value=None)
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
             patch(
-                "app.api.v1.auth.auth_service.get_user_by_email",
-                new_callable=AsyncMock,
-                return_value=None,
+                "app.api.v1.auth.UserRepository",
+                return_value=mock_repo_instance,
             ),
         ):
             response = await async_client.post(
@@ -416,12 +426,14 @@ class TestResendVerificationRoute:
         mock_user = _make_mock_user(is_verified=True)
         mock_send = AsyncMock()
 
+        mock_repo_instance = AsyncMock()
+        mock_repo_instance.get_by_email = AsyncMock(return_value=mock_user)
+
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
             patch(
-                "app.api.v1.auth.auth_service.get_user_by_email",
-                new_callable=AsyncMock,
-                return_value=mock_user,
+                "app.api.v1.auth.UserRepository",
+                return_value=mock_repo_instance,
             ),
             patch(
                 "app.api.v1.auth.auth_service.send_verification_email",

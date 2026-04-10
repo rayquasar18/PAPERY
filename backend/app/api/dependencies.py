@@ -17,7 +17,7 @@ from app.core.db.session import get_session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token, is_token_blacklisted
 from app.models.user import User
-from app.services import auth_service
+from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,8 @@ async def get_current_user(
     if await is_token_blacklisted(payload.jti):
         raise UnauthorizedError(detail="Token has been revoked")
 
-    user = await auth_service.get_user_by_uuid(
-        db, uuid_pkg.UUID(payload.sub)
-    )
+    user_repo = UserRepository(db)
+    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(payload.sub))
     if user is None:
         raise UnauthorizedError(detail="User not found")
 
