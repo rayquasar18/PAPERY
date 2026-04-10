@@ -20,7 +20,7 @@ Users can work with any document intelligently — ask questions, get accurate c
 
 ### Active
 
-- [ ] Full authentication system (register, login, logout, email verification, password reset, OAuth)
+- [x] Full authentication system (register, login, logout, email verification, password reset, OAuth) — Validated in Phase 3 (core flows) + Phase 4 (OAuth, password management)
 - [ ] User tier system with role-based access control (admin, regular users, tier-based permissions)
 - [ ] Admin panel for managing users, tiers, rate limits, and system configuration
 - [ ] Project system (CRUD, ACL-based access control per resource)
@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after Phase 3 completion — Authentication core flows (registration, login, logout, JWT HttpOnly cookies, token refresh/rotation, rate limiting, 121 tests passing)*
+*Last updated: 2026-04-10 after Phase 4 completion — Authentication advanced (Google/GitHub OAuth, password reset via email, change/set password, session invalidation)*
