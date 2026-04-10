@@ -325,6 +325,97 @@ class TestOAuthCallbackSuccess:
         assert response.status_code == 302
         assert "error=oauth_failed" in response.headers.get("location", "")
 
+    async def test_github_callback_provider_exception_redirects_with_failed_error(
+        self, async_client: AsyncClient
+    ):
+        """GitHub provider HTTP failure redirects to login with oauth_failed."""
+        with (
+            patch(
+                "app.api.v1.auth.validate_oauth_state",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch("app.api.v1.auth._get_github_provider") as mock_provider_factory,
+            patch("app.api.v1.auth.settings") as mock_settings,
+        ):
+            mock_settings.FRONTEND_URL = "http://localhost:3000"
+            mock_settings.GITHUB_CLIENT_ID = "configured"
+            mock_settings.GITHUB_CLIENT_SECRET = "configured"
+            mock_settings.OAUTH_REDIRECT_BASE_URL = "http://localhost:8000"
+
+            mock_provider = MagicMock()
+            mock_provider.get_access_token = AsyncMock(
+                side_effect=ValueError("Token exchange failed")
+            )
+            mock_provider_factory.return_value = mock_provider
+
+            response = await async_client.get(
+                "/api/v1/auth/github/callback",
+                params={"code": "bad-code", "state": "valid-state"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        assert "error=oauth_failed" in response.headers.get("location", "")
+
+    async def test_github_callback_calls_oauth_login_or_register(
+        self, async_client: AsyncClient
+    ):
+        """GitHub callback calls oauth_login_or_register and create_token_pair."""
+        mock_user = _make_mock_user(email="ghflow@example.com")
+        mock_payload = _make_token_payload(mock_user.uuid)
+
+        mock_oauth_login = AsyncMock(return_value=mock_user)
+        mock_create_pair = MagicMock(return_value=("gh-access", "gh-refresh"))
+
+        with (
+            patch(
+                "app.api.v1.auth.validate_oauth_state",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch("app.api.v1.auth._get_github_provider") as mock_provider_factory,
+            patch(
+                "app.api.v1.auth.auth_service.oauth_login_or_register",
+                new=mock_oauth_login,
+            ),
+            patch("app.api.v1.auth.create_token_pair", new=mock_create_pair),
+            patch("app.api.v1.auth.decode_token", return_value=mock_payload),
+            patch(
+                "app.api.v1.auth.register_token_in_family", new_callable=AsyncMock
+            ),
+            patch("app.api.v1.auth.track_user_family", new_callable=AsyncMock),
+            patch("app.api.v1.auth.settings") as mock_settings,
+        ):
+            mock_settings.FRONTEND_URL = "http://localhost:3000"
+            mock_settings.ENVIRONMENT = "local"
+            mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 30
+            mock_settings.REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+            mock_provider = MagicMock()
+            mock_provider.get_access_token = AsyncMock(return_value="gh-token")
+            mock_provider.get_user_info = AsyncMock(
+                return_value=OAuthUserInfo(
+                    provider="github",
+                    provider_user_id="github-flow-789",
+                    email="ghflow@example.com",
+                    name="GH Flow User",
+                )
+            )
+            mock_provider_factory.return_value = mock_provider
+
+            response = await async_client.get(
+                "/api/v1/auth/github/callback",
+                params={"code": "valid-code", "state": "valid-state"},
+                follow_redirects=False,
+            )
+
+        # Verify the code path was fully executed
+        mock_oauth_login.assert_called_once()
+        mock_create_pair.assert_called_once_with(mock_user.uuid)
+        assert response.status_code == 302
+        assert "/dashboard" in response.headers.get("location", "")
+
 
 # ---------------------------------------------------------------------------
 # TestOAuthLoginOrRegister — service-level logic
