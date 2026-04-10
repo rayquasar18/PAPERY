@@ -50,7 +50,7 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
     to log in via their OAuth provider instead.
     """
     user_repo = UserRepository(db)
-    existing = await user_repo.get_by_email(email)
+    existing = await user_repo.get(email=email.lower())
     if existing is not None:
         if existing.hashed_password is None:
             raise ConflictError(
@@ -74,7 +74,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     Raises ``UnauthorizedError`` for invalid credentials or inactive accounts.
     """
     user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(email)
+    user = await user_repo.get(email=email.lower())
     if user is None:
         raise UnauthorizedError(detail="Invalid email or password")
 
@@ -158,7 +158,7 @@ async def rotate_refresh_token(
 
     # Verify user still exists and is active
     user_repo = UserRepository(db)
-    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(old_payload.sub))
+    user = await user_repo.get(uuid=uuid_pkg.UUID(old_payload.sub))
     if user is None or not user.is_active:
         await invalidate_token_family(family_id)
         raise UnauthorizedError(detail="User not found or deactivated")
@@ -199,7 +199,7 @@ async def verify_email(db: AsyncSession, token: str) -> User:
         raise BadRequestError(detail="Token is not an email verification token")
 
     user_repo = UserRepository(db)
-    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(payload.sub))
+    user = await user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
     if user is None:
         raise NotFoundError(detail="User not found")
 
@@ -262,7 +262,7 @@ async def create_first_superuser(db: AsyncSession) -> None:
         return
 
     user_repo = UserRepository(db)
-    existing = await user_repo.get_by_email(admin_email)
+    existing = await user_repo.get(email=admin_email.lower())
     if existing is not None:
         logger.info("Superuser %s already exists — skipping.", admin_email)
         return

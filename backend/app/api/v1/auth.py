@@ -228,7 +228,7 @@ async def refresh(
 
     # Load user for response body
     user_repo = UserRepository(db)
-    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(old_payload.sub))
+    user = await user_repo.get(uuid=uuid_pkg.UUID(old_payload.sub))
     if user is None:
         raise UnauthorizedError(detail="User not found")
 
@@ -286,7 +286,7 @@ async def resend_verification(
 
     # Anti-enumeration: always return success, even if user doesn't exist
     user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(body.email)
+    user = await user_repo.get(email=body.email.lower())
     if user is not None and not user.is_verified:
         try:
             await auth_service.send_verification_email(user.email, user.uuid)

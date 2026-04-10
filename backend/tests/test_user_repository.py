@@ -38,6 +38,7 @@ def _make_mock_session() -> AsyncMock:
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.add = MagicMock()
+    session.delete = AsyncMock()
     return session
 
 
@@ -48,73 +49,145 @@ def _setup_execute_result(session: AsyncMock, return_value: object) -> None:
     session.execute = AsyncMock(return_value=mock_result)
 
 
-# ---------------------------------------------------------------------------
-# get_by_email
-# ---------------------------------------------------------------------------
-class TestGetByEmail:
-    """Test UserRepository.get_by_email."""
+def _setup_execute_multi_result(session: AsyncMock, return_values: list) -> None:
+    """Configure mock session.execute to return scalars().all() result."""
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = return_values
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    session.execute = AsyncMock(return_value=mock_result)
 
-    async def test_found(self):
-        """Returns user when email matches."""
+
+# ---------------------------------------------------------------------------
+# BaseRepository.get(**filters) — via UserRepository
+# ---------------------------------------------------------------------------
+class TestGet:
+    """Test generic BaseRepository.get via UserRepository."""
+
+    async def test_get_by_email(self):
+        """Returns user when email filter matches."""
         mock_user = _make_mock_user()
         session = _make_mock_session()
         _setup_execute_result(session, mock_user)
 
         repo = UserRepository(session)
-        result = await repo.get_by_email("test@example.com")
+        result = await repo.get(email="test@example.com")
 
         assert result is mock_user
         session.execute.assert_called_once()
 
-    async def test_not_found(self):
+    async def test_get_by_email_not_found(self):
         """Returns None when email does not match."""
         session = _make_mock_session()
         _setup_execute_result(session, None)
 
         repo = UserRepository(session)
-        result = await repo.get_by_email("nonexistent@example.com")
+        result = await repo.get(email="nonexistent@example.com")
 
         assert result is None
 
-    async def test_case_insensitive(self):
-        """Email is lowercased before query."""
-        session = _make_mock_session()
-        _setup_execute_result(session, None)
-
-        repo = UserRepository(session)
-        await repo.get_by_email("TEST@Example.COM")
-
-        # Verify execute was called (the where clause lowercases internally)
-        session.execute.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# get_active_by_uuid
-# ---------------------------------------------------------------------------
-class TestGetActiveByUuid:
-    """Test UserRepository.get_active_by_uuid."""
-
-    async def test_found(self):
-        """Returns user when UUID matches and not soft-deleted."""
+    async def test_get_by_uuid(self):
+        """Returns user when uuid filter matches."""
         mock_user = _make_mock_user()
         session = _make_mock_session()
         _setup_execute_result(session, mock_user)
 
         repo = UserRepository(session)
-        result = await repo.get_active_by_uuid(mock_user.uuid)
+        result = await repo.get(uuid=mock_user.uuid)
 
         assert result is mock_user
         session.execute.assert_called_once()
 
-    async def test_not_found(self):
+    async def test_get_by_uuid_not_found(self):
         """Returns None when UUID does not match."""
         session = _make_mock_session()
         _setup_execute_result(session, None)
 
         repo = UserRepository(session)
-        result = await repo.get_active_by_uuid(uuid_pkg.uuid4())
+        result = await repo.get(uuid=uuid_pkg.uuid4())
 
         assert result is None
+
+    async def test_get_by_id(self):
+        """Returns user when id filter matches."""
+        mock_user = _make_mock_user()
+        session = _make_mock_session()
+        _setup_execute_result(session, mock_user)
+
+        repo = UserRepository(session)
+        result = await repo.get(id=1)
+
+        assert result is mock_user
+
+    async def test_get_no_filters_returns_first(self):
+        """get() with no filters returns first non-deleted record."""
+        mock_user = _make_mock_user()
+        session = _make_mock_session()
+        _setup_execute_result(session, mock_user)
+
+        repo = UserRepository(session)
+        result = await repo.get()
+
+        assert result is mock_user
+
+
+# ---------------------------------------------------------------------------
+# BaseRepository.get_multi — via UserRepository
+# ---------------------------------------------------------------------------
+class TestGetMulti:
+    """Test generic BaseRepository.get_multi via UserRepository."""
+
+    async def test_returns_list(self):
+        """get_multi returns a list of records."""
+        user1 = _make_mock_user(email="a@example.com")
+        user2 = _make_mock_user(email="b@example.com")
+        session = _make_mock_session()
+        _setup_execute_multi_result(session, [user1, user2])
+
+        repo = UserRepository(session)
+        result = await repo.get_multi(skip=0, limit=10)
+
+        assert result == [user1, user2]
+        session.execute.assert_called_once()
+
+    async def test_returns_empty_list(self):
+        """get_multi returns empty list when no records match."""
+        session = _make_mock_session()
+        _setup_execute_multi_result(session, [])
+
+        repo = UserRepository(session)
+        result = await repo.get_multi(skip=0, limit=10)
+
+        assert result == []
+
+    async def test_with_filters(self):
+        """get_multi accepts filters."""
+        mock_user = _make_mock_user()
+        session = _make_mock_session()
+        _setup_execute_multi_result(session, [mock_user])
+
+        repo = UserRepository(session)
+        result = await repo.get_multi(skip=0, limit=10, is_active=True)
+
+        assert result == [mock_user]
+
+
+# ---------------------------------------------------------------------------
+# BaseRepository.delete (hard delete) — via UserRepository
+# ---------------------------------------------------------------------------
+class TestDelete:
+    """Test BaseRepository.delete (hard delete) via UserRepository."""
+
+    async def test_hard_delete(self):
+        """delete removes the record and commits."""
+        mock_user = _make_mock_user()
+        session = _make_mock_session()
+
+        repo = UserRepository(session)
+        await repo.delete(mock_user)
+
+        session.delete.assert_called_once_with(mock_user)
+        session.commit.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -168,29 +241,7 @@ class TestCreateUser:
 # BaseRepository methods (via UserRepository)
 # ---------------------------------------------------------------------------
 class TestBaseRepositoryMethods:
-    """Test inherited BaseRepository methods through UserRepository."""
-
-    async def test_get_by_id(self):
-        """get_by_id returns user when found."""
-        mock_user = _make_mock_user()
-        session = _make_mock_session()
-        _setup_execute_result(session, mock_user)
-
-        repo = UserRepository(session)
-        result = await repo.get_by_id(1)
-
-        assert result is mock_user
-
-    async def test_get_by_uuid(self):
-        """get_by_uuid returns user when found."""
-        mock_user = _make_mock_user()
-        session = _make_mock_session()
-        _setup_execute_result(session, mock_user)
-
-        repo = UserRepository(session)
-        result = await repo.get_by_uuid(mock_user.uuid)
-
-        assert result is mock_user
+    """Test other inherited BaseRepository methods through UserRepository."""
 
     async def test_update(self):
         """update commits and refreshes the instance."""

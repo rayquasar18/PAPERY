@@ -51,7 +51,7 @@ async def get_current_user(
         raise UnauthorizedError(detail="Token has been revoked")
 
     user_repo = UserRepository(db)
-    user = await user_repo.get_active_by_uuid(uuid_pkg.UUID(payload.sub))
+    user = await user_repo.get(uuid=uuid_pkg.UUID(payload.sub))
     if user is None:
         raise UnauthorizedError(detail="User not found")
 

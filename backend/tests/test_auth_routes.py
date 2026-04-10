@@ -194,7 +194,7 @@ class TestLogoutRoute:
         access_payload = _make_token_payload(mock_user.uuid)
 
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+        mock_repo_instance.get = AsyncMock(return_value=mock_user)
 
         with (
             patch(
@@ -245,7 +245,7 @@ class TestRefreshRoute:
         )
 
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+        mock_repo_instance.get = AsyncMock(return_value=mock_user)
 
         with (
             patch(
@@ -291,7 +291,7 @@ class TestGetMeRoute:
         access_payload = _make_token_payload(mock_user.uuid)
 
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_active_by_uuid = AsyncMock(return_value=mock_user)
+        mock_repo_instance.get = AsyncMock(return_value=mock_user)
 
         with (
             patch(
@@ -379,7 +379,7 @@ class TestResendVerificationRoute:
         mock_send = AsyncMock()
 
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_by_email = AsyncMock(return_value=mock_user)
+        mock_repo_instance.get = AsyncMock(return_value=mock_user)
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
@@ -403,7 +403,7 @@ class TestResendVerificationRoute:
     async def test_resend_verification_unknown_email_returns_200(self, async_client: AsyncClient):
         """Unknown email still returns 200 (anti-enumeration)."""
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_by_email = AsyncMock(return_value=None)
+        mock_repo_instance.get = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),
@@ -427,7 +427,7 @@ class TestResendVerificationRoute:
         mock_send = AsyncMock()
 
         mock_repo_instance = AsyncMock()
-        mock_repo_instance.get_by_email = AsyncMock(return_value=mock_user)
+        mock_repo_instance.get = AsyncMock(return_value=mock_user)
 
         with (
             patch("app.api.v1.auth.check_rate_limit", new_callable=AsyncMock),

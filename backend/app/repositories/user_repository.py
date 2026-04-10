@@ -2,13 +2,14 @@
 
 Extracted from ``auth_service.py`` to separate pure data access
 (SELECT/INSERT queries) from business logic (validation, exceptions).
+
+Generic lookups (by id, uuid, email, etc.) are handled by
+``BaseRepository.get(**filters)`` — this repository only adds
+domain-specific factory methods.
 """
 
 from __future__ import annotations
 
-import uuid as uuid_pkg
-
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -16,35 +17,17 @@ from app.repositories.base import BaseRepository
 
 
 class UserRepository(BaseRepository[User]):
-    """Repository for User model with domain-specific query methods."""
+    """Repository for User model with domain-specific factory methods.
+
+    Generic lookups are inherited from ``BaseRepository``::
+
+        await repo.get(email="user@example.com")
+        await repo.get(uuid=some_uuid)
+        await repo.get(id=1)
+    """
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(User, session)
-
-    async def get_by_email(self, email: str) -> User | None:
-        """Fetch a non-deleted user by email (case-insensitive).
-
-        Returns None if no matching user exists.
-        """
-        stmt = select(User).where(
-            User.email == email.lower(),
-            User.deleted_at.is_(None),
-        )
-        result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def get_active_by_uuid(self, uuid: uuid_pkg.UUID) -> User | None:
-        """Fetch a non-deleted user by public UUID.
-
-        Returns None if the user does not exist or is soft-deleted.
-        This is the primary lookup used by authentication dependencies.
-        """
-        stmt = select(User).where(
-            User.uuid == uuid,
-            User.deleted_at.is_(None),
-        )
-        result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def create_user(
         self,

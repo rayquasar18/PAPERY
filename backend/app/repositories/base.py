@@ -7,9 +7,8 @@ Soft-delete filtering is applied automatically when the model uses
 
 from __future__ import annotations
 
-import uuid as uuid_pkg
 from datetime import UTC, datetime
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,22 +49,46 @@ class BaseRepository(Generic[ModelType]):
     # ------------------------------------------------------------------
     # Read
     # ------------------------------------------------------------------
-    async def get_by_id(self, id: int) -> ModelType | None:  # noqa: A002
-        """Fetch a single record by internal integer PK (soft-delete aware)."""
-        stmt = select(self._model).where(self._model.id == id)
-        stmt = self._not_deleted(stmt)
-        result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+    async def get(self, **filters: Any) -> ModelType | None:
+        """Fetch a single record matching all filters (soft-delete aware).
 
-    async def get_by_uuid(self, uuid: uuid_pkg.UUID) -> ModelType | None:
-        """Fetch a single record by public UUID (soft-delete aware).
+        Usage examples::
 
-        Only works for models that include ``UUIDMixin``.
+            await repo.get(id=1)
+            await repo.get(uuid=some_uuid)
+            await repo.get(email="user@example.com")
+
+        Raises ``AttributeError`` if a filter key does not correspond to a
+        column on the model — callers must only use valid column names.
         """
-        stmt = select(self._model).where(self._model.uuid == uuid)  # type: ignore[attr-defined]
+        stmt = select(self._model)
+        for field, value in filters.items():
+            stmt = stmt.where(getattr(self._model, field) == value)
         stmt = self._not_deleted(stmt)
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_multi(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        **filters: Any,
+    ) -> list[ModelType]:
+        """Fetch multiple records with pagination and optional filters (soft-delete aware).
+
+        Usage examples::
+
+            await repo.get_multi(skip=0, limit=20)
+            await repo.get_multi(is_active=True, skip=0, limit=50)
+        """
+        stmt = select(self._model)
+        for field, value in filters.items():
+            stmt = stmt.where(getattr(self._model, field) == value)
+        stmt = self._not_deleted(stmt)
+        stmt = stmt.offset(skip).limit(limit)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
 
     # ------------------------------------------------------------------
     # Write
@@ -92,3 +115,12 @@ class BaseRepository(Generic[ModelType]):
         await self._session.commit()
         await self._session.refresh(instance)
         return instance
+
+    async def delete(self, instance: ModelType) -> None:
+        """Hard-delete a record permanently.
+
+        Use with caution — this removes the row from the database.
+        Prefer ``soft_delete`` for most use cases.
+        """
+        await self._session.delete(instance)
+        await self._session.commit()
