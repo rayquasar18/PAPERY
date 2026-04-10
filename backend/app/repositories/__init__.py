@@ -1,0 +1,11 @@
+"""Repository layer — pure data access, no business logic.
+
+Repositories encapsulate all SQLAlchemy queries (SELECT, INSERT, UPDATE,
+DELETE) and return model instances or None.  Business rules, validation,
+and domain exceptions belong in the services layer.
+"""
+
+from app.repositories.base import BaseRepository
+from app.repositories.user_repository import UserRepository
+
+__all__ = ["BaseRepository", "UserRepository"]
