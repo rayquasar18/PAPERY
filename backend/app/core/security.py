@@ -113,6 +113,7 @@ BLACKLIST_PREFIX = "blacklist:jti:"
 FAMILY_PREFIX = "token_family:"
 RESET_JTI_PREFIX = "reset_jti:"
 OAUTH_STATE_PREFIX = "oauth_state:"
+USER_FAMILIES_PREFIX = "user_families:"
 
 
 def _redis() -> object:
@@ -229,3 +230,35 @@ async def validate_oauth_state(provider: str, state: str) -> bool:
     key = f"{OAUTH_STATE_PREFIX}{provider}:{state}"
     result = await client.delete(key)  # type: ignore[union-attr]
     return result > 0  # 1 if key existed and was deleted, 0 otherwise
+
+
+# ---------------------------------------------------------------------------
+# User → token family index (for all-sessions invalidation)
+# ---------------------------------------------------------------------------
+async def track_user_family(user_uuid: uuid_pkg.UUID, family_id: str) -> None:
+    """Record that a token family belongs to this user.
+
+    Called on every login/registration/OAuth callback so that
+    ``invalidate_all_user_sessions`` can find all active families.
+    """
+    client = _redis()
+    key = f"{USER_FAMILIES_PREFIX}{user_uuid}"
+    await client.sadd(key, family_id)  # type: ignore[union-attr]
+    # TTL slightly longer than refresh token lifetime
+    ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400 + 3600
+    await client.expire(key, ttl)  # type: ignore[union-attr]
+
+
+async def invalidate_all_user_sessions(user_uuid: uuid_pkg.UUID) -> None:
+    """Revoke ALL active token families for a user.
+
+    Used when password is changed — forces re-login on all devices.
+    Iterates all tracked family IDs and invalidates each one.
+    """
+    client = _redis()
+    key = f"{USER_FAMILIES_PREFIX}{user_uuid}"
+    family_ids = await client.smembers(key)  # type: ignore[union-attr]
+    for family_id in family_ids:
+        fid = family_id.decode() if isinstance(family_id, bytes) else family_id
+        await invalidate_token_family(fid)
+    await client.delete(key)  # type: ignore[union-attr]
