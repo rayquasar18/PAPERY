@@ -93,6 +93,7 @@ progress:
 | `core/` = Foundation only (DB + exceptions) | sml | core/ must never grow for new services; only domain fundamentals | 2026-04-09 |
 | `extensions/` → `infra/` with subdirectories | sml | infra/redis/, infra/minio/ — clearer intent, room for infra/email/, infra/broker/ | 2026-04-09 |
 | `tasks/` → `worker/` | sml | Matches ARQ convention; clearer than generic "tasks" for background jobs | 2026-04-09 |
+| Repository layer added — services/ delegates data access to repositories/ | ox9 | Clean separation of concerns; services own business logic, repos own queries; easier to test and extend | 2026-04-10 |
 
 ---
 
@@ -110,6 +111,7 @@ None currently.
 | 260403-kva | Refactor backend: remove libs→utils, PaperyHTTPException, move DB to core/db, add Makefile | 2026-04-03 | 7192503 | [260403-kva-refactor-backend-structure-remove-libs-u](./quick/260403-kva-refactor-backend-structure-remove-libs-u/) |
 | 260406-uk6 | Refactor exception handling: move error_code_map out of main.py, PaperyHTTPException with convenience subclasses | 2026-04-06 | d0d49e1 | [260406-uk6-refactor-exception-handling-replace-hard](./quick/260406-uk6-refactor-exception-handling-replace-hard/) |
 | 260409-sml | Refactor backend: core/ as Foundation, extensions/ → infra/, tasks/ → worker/ | 2026-04-09 | 6122208 | [260409-sml-refactor-backend-core-as-foundation-infr](./quick/260409-sml-refactor-backend-core-as-foundation-infr/) |
+| 260410-ox9 | Add repository layer separating data access from business logic in services | 2026-04-10 | 8534b75 | [260410-ox9-add-repository-layer-separating-data-acc](./quick/260410-ox9-add-repository-layer-separating-data-acc/) |
 
 ---
 
@@ -147,6 +149,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-10
+Last activity: 2026-04-10 - Completed quick task 260410-ox9: Add repository layer separating data access from business logic in services
 
 *Last updated: 2026-04-09*
