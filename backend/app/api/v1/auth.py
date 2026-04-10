@@ -26,10 +26,12 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
     RegisterRequest,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     UserPublicRead,
     VerifyEmailRequest,
 )
@@ -300,3 +302,60 @@ async def resend_verification(
     return MessageResponse(
         message="If an account with that email exists and is unverified, a verification email has been sent.",
     )
+
+
+# ---------------------------------------------------------------------------
+# 8. POST /auth/forgot-password
+# ---------------------------------------------------------------------------
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+) -> MessageResponse:
+    """Request a password reset email.
+
+    Rate limit: 3 requests / minute per email + IP combination.
+    Anti-enumeration: always returns the same success message.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(
+        f"auth:forgot-password:{body.email.lower()}:{client_ip}",
+        max_requests=3,
+        window_seconds=60,
+    )
+
+    # Fire-and-forget (best effort)
+    try:
+        await auth_service.request_password_reset(db, body.email)
+    except Exception:
+        logger.warning("Failed to process password reset for %s", body.email, exc_info=True)
+
+    return MessageResponse(
+        message="If an account with that email exists, a password reset email has been sent.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# 9. POST /auth/reset-password
+# ---------------------------------------------------------------------------
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+) -> MessageResponse:
+    """Reset password using a valid reset token.
+
+    Rate limit: 5 requests / minute per IP.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(
+        f"auth:reset-password:{client_ip}",
+        max_requests=5,
+        window_seconds=60,
+    )
+
+    await auth_service.reset_password(db, body.token, body.new_password)
+
+    return MessageResponse(message="Password has been reset successfully.")
