@@ -8,7 +8,6 @@ SSR frameworks like Next.js.
 from __future__ import annotations
 
 import logging
-import uuid as uuid_pkg
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +22,6 @@ from app.core.security import (
     register_token_in_family,
 )
 from app.models.user import User
-from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
@@ -35,7 +33,7 @@ from app.schemas.auth import (
     UserPublicRead,
     VerifyEmailRequest,
 )
-from app.services import auth_service
+from app.services.auth_service import AuthService
 from app.utils.rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -113,7 +111,8 @@ async def register(
     client_ip = request.client.host if request.client else "unknown"
     await check_rate_limit(f"auth:register:{client_ip}", max_requests=3, window_seconds=60)
 
-    user = await auth_service.register_user(db, body.email, body.password)
+    service = AuthService(db)
+    user = await service.register_user(body.email, body.password)
 
     access_token, refresh_token = create_token_pair(user.uuid)
 
@@ -127,7 +126,7 @@ async def register(
 
     # Fire-and-forget verification email (best effort)
     try:
-        await auth_service.send_verification_email(user.email, user.uuid)
+        await service.send_verification_email(user.email, user.uuid)
     except Exception:
         logger.warning("Failed to send verification email to %s", user.email, exc_info=True)
 
@@ -154,7 +153,8 @@ async def login(
     client_ip = request.client.host if request.client else "unknown"
     await check_rate_limit(f"auth:login:{client_ip}", max_requests=5, window_seconds=60)
 
-    user = await auth_service.authenticate_user(db, body.email, body.password)
+    service = AuthService(db)
+    user = await service.authenticate_user(body.email, body.password)
 
     access_token, refresh_token = create_token_pair(user.uuid)
 
@@ -179,6 +179,7 @@ async def logout(
     request: Request,
     response: Response,
     _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> MessageResponse:
     """Logout — blacklist tokens and clear cookies.
 
@@ -197,7 +198,8 @@ async def logout(
                 refresh_jti = refresh_payload.jti
             except Exception:
                 logger.debug("Refresh token decode failed during logout — likely expired")
-        await auth_service.logout_user(access_payload, refresh_jti=refresh_jti)
+        service = AuthService(db)
+        await service.logout_user(access_payload, refresh_jti=refresh_jti)
 
     _clear_auth_cookies(response)
 
@@ -224,13 +226,14 @@ async def refresh(
 
     old_payload = decode_token(token)
 
-    access_token, refresh_token = await auth_service.rotate_refresh_token(db, old_payload)
+    service = AuthService(db)
+    access_token, refresh_token = await service.rotate_refresh_token(old_payload)
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    # Load user for response body
-    user_repo = UserRepository(db)
-    user = await user_repo.get(uuid=uuid_pkg.UUID(old_payload.sub))
+    # Load user for response body via service helper (no direct repo in router)
+    import uuid as uuid_pkg
+    user = await service.get_user_by_uuid(uuid_pkg.UUID(old_payload.sub))
     if user is None:
         raise UnauthorizedError(detail="User not found")
 
@@ -260,7 +263,8 @@ async def verify_email(
     db: AsyncSession = Depends(get_session),
 ) -> MessageResponse:
     """Verify user email using a verification token."""
-    await auth_service.verify_email(db, body.token)
+    service = AuthService(db)
+    await service.verify_email(body.token)
     return MessageResponse(message="Email verified successfully.")
 
 
@@ -287,11 +291,11 @@ async def resend_verification(
     )
 
     # Anti-enumeration: always return success, even if user doesn't exist
-    user_repo = UserRepository(db)
-    user = await user_repo.get(email=body.email.lower())
+    service = AuthService(db)
+    user = await service.get_user_by_email(body.email)
     if user is not None and not user.is_verified:
         try:
-            await auth_service.send_verification_email(user.email, user.uuid)
+            await service.send_verification_email(user.email, user.uuid)
         except Exception:
             logger.warning(
                 "Failed to resend verification email to %s",
@@ -327,7 +331,8 @@ async def forgot_password(
 
     # Fire-and-forget (best effort)
     try:
-        await auth_service.request_password_reset(db, body.email)
+        service = AuthService(db)
+        await service.request_password_reset(body.email)
     except Exception:
         logger.warning("Failed to process password reset for %s", body.email, exc_info=True)
 
@@ -356,6 +361,7 @@ async def reset_password(
         window_seconds=60,
     )
 
-    await auth_service.reset_password(db, body.token, body.new_password)
+    service = AuthService(db)
+    await service.reset_password(body.token, body.new_password)
 
     return MessageResponse(message="Password has been reset successfully.")
