@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-status: planning
+current_phase: 04
+status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-04-10T13:36:20.292Z"
-last_activity: "2026-04-10 - Completed quick task 260410-pdh: Refactor BaseRepository with generic get/get_multi/delete"
+last_updated: "2026-04-10T14:29:08.118Z"
+last_activity: 2026-04-10
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 13
+  total_plans: 17
   completed_plans: 13
-  percent: 100
+  percent: 76
 ---
 
 # Project State: PAPERY
 
 **Last updated:** 2026-04-10
-**Current phase:** 4
-**Status:** Ready to plan
+**Current phase:** 04
+**Status:** Executing Phase 04
 
 ---
 
@@ -96,6 +96,7 @@ progress:
 | `tasks/` → `worker/` | sml | Matches ARQ convention; clearer than generic "tasks" for background jobs | 2026-04-09 |
 | Repository layer added — services/ delegates data access to repositories/ | ox9 | Clean separation of concerns; services own business logic, repos own queries; easier to test and extend | 2026-04-10 |
 | BaseRepository generic get(**filters)/get_multi/delete — field-based lookup pattern | pdh | Eliminates per-field methods; single `get(email=...)` replaces `get_by_email`; standard CRUD completeness | 2026-04-10 |
+| Class-based services with constructor DI — `AuthService(db)` pattern | u0m | One instance per request; repo created once in __init__; sets template for all future services | 2026-04-10 |
 
 ---
 
@@ -115,6 +116,7 @@ None currently.
 | 260409-sml | Refactor backend: core/ as Foundation, extensions/ → infra/, tasks/ → worker/ | 2026-04-09 | 6122208 | [260409-sml-refactor-backend-core-as-foundation-infr](./quick/260409-sml-refactor-backend-core-as-foundation-infr/) |
 | 260410-ox9 | Add repository layer separating data access from business logic in services | 2026-04-10 | 8534b75 | [260410-ox9-add-repository-layer-separating-data-acc](./quick/260410-ox9-add-repository-layer-separating-data-acc/) |
 | 260410-pdh | Refactor BaseRepository with generic get/get_multi/delete methods using field-based filtering | 2026-04-10 | edaca8c | [260410-pdh-refactor-baserepository-with-generic-get](./quick/260410-pdh-refactor-baserepository-with-generic-get/) |
+| 260410-u0m | Refactor auth_service from standalone functions to class-based AuthService with DI | 2026-04-10 | e4398a4 | [260410-u0m-refactor-auth-service-from-standalone-fu](./quick/260410-u0m-refactor-auth-service-from-standalone-fu/) |
 
 ---
 
@@ -152,6 +154,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-10 - Completed quick task 260410-pdh: Refactor BaseRepository with generic get/get_multi/delete
+Last activity: 2026-04-10 - Completed quick task 260410-u0m: Refactor auth_service to class-based AuthService with DI
 
 *Last updated: 2026-04-09*
