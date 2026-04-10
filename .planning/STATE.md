@@ -94,6 +94,7 @@ progress:
 | `extensions/` → `infra/` with subdirectories | sml | infra/redis/, infra/minio/ — clearer intent, room for infra/email/, infra/broker/ | 2026-04-09 |
 | `tasks/` → `worker/` | sml | Matches ARQ convention; clearer than generic "tasks" for background jobs | 2026-04-09 |
 | Repository layer added — services/ delegates data access to repositories/ | ox9 | Clean separation of concerns; services own business logic, repos own queries; easier to test and extend | 2026-04-10 |
+| BaseRepository generic get(**filters)/get_multi/delete — field-based lookup pattern | pdh | Eliminates per-field methods; single `get(email=...)` replaces `get_by_email`; standard CRUD completeness | 2026-04-10 |
 
 ---
 
@@ -112,6 +113,7 @@ None currently.
 | 260406-uk6 | Refactor exception handling: move error_code_map out of main.py, PaperyHTTPException with convenience subclasses | 2026-04-06 | d0d49e1 | [260406-uk6-refactor-exception-handling-replace-hard](./quick/260406-uk6-refactor-exception-handling-replace-hard/) |
 | 260409-sml | Refactor backend: core/ as Foundation, extensions/ → infra/, tasks/ → worker/ | 2026-04-09 | 6122208 | [260409-sml-refactor-backend-core-as-foundation-infr](./quick/260409-sml-refactor-backend-core-as-foundation-infr/) |
 | 260410-ox9 | Add repository layer separating data access from business logic in services | 2026-04-10 | 8534b75 | [260410-ox9-add-repository-layer-separating-data-acc](./quick/260410-ox9-add-repository-layer-separating-data-acc/) |
+| 260410-pdh | Refactor BaseRepository with generic get/get_multi/delete methods using field-based filtering | 2026-04-10 | edaca8c | [260410-pdh-refactor-baserepository-with-generic-get](./quick/260410-pdh-refactor-baserepository-with-generic-get/) |
 
 ---
 
@@ -149,6 +151,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-10 - Completed quick task 260410-ox9: Add repository layer separating data access from business logic in services
+Last activity: 2026-04-10 - Completed quick task 260410-pdh: Refactor BaseRepository with generic get/get_multi/delete
 
 *Last updated: 2026-04-09*
