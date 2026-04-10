@@ -1,6 +1,8 @@
 # Docker Compose — Middleware only (daily development)
 # Usage: docker compose -f docker/docker-compose.middleware.yaml up -d
 
+name: papery
+
 services:
   db:
     image: postgres:17-alpine

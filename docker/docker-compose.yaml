@@ -1,6 +1,8 @@
 # Docker Compose — Full stack (CI, staging, production)
 # Usage: docker compose -f docker/docker-compose.yaml up -d
 
+name: papery
+
 services:
   db:
     image: postgres:17-alpine
