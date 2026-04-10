@@ -4,20 +4,20 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-04-10T09:04:02.003Z"
+stopped_at: Phase 3 complete
+last_updated: "2026-04-10T11:30:00.000Z"
 last_activity: 2026-04-10
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 17
   percent: 100
 ---
 
 # Project State: PAPERY
 
-**Last updated:** 2026-04-03
+**Last updated:** 2026-04-10
 **Current phase:** 4
 **Status:** Ready to plan
 
@@ -25,20 +25,21 @@ progress:
 
 ## Active Phase
 
-### Phase 2: Error Handling, API Structure & Health — COMPLETE ✅
+### Phase 3: Authentication — Core Flows — COMPLETE ✅
 
-**Goal:** Establish structured error handling, API versioning, request ID tracking, health endpoints, and production Docker image.
+**Goal:** Implement core authentication — registration, login, logout, JWT via HttpOnly cookies, token refresh/rotation.
 
-**Status:** COMPLETE — All 4 plans executed
-**Plans:** 02-01 ✅ | 02-02 ✅ | 02-03 ✅ | 02-04 ✅
+**Status:** COMPLETE — All 4 plans executed, verified (36/36 must-haves)
+**Plans:** 03-01 ✅ | 03-02 ✅ | 03-03 ✅ | 03-04 ✅
 
 | Requirement | Status | Notes |
 |------------|--------|-------|
-| INFRA-06 | ✅ Complete | PaperyError hierarchy + ErrorResponse + exception handlers |
-| INFRA-07 | ✅ Complete | API versioned at /api/v1/, OpenAPI at /api/v1/docs |
-| INFRA-08 | ✅ Complete | /health (liveness) + /ready (readiness with service checks) |
-| INFRA-10 | ✅ Complete | RequestIDMiddleware + X-Request-ID header |
-| INFRA-12 | ✅ Complete | Production Dockerfile (multi-stage, gunicorn+uvicorn-worker) |
+| AUTH-01 | ✅ Complete | Registration with email/password, User model, UserRepository |
+| AUTH-02 | ✅ Complete | Email verification flow with JWT token, is_verified flag |
+| AUTH-03 | ✅ Complete | Login returns JWT access+refresh via HttpOnly cookies |
+| AUTH-04 | ✅ Complete | Token refresh endpoint preserves session across browser refresh |
+| AUTH-05 | ✅ Complete | Logout blacklists tokens in Redis, family invalidation |
+| AUTH-09 | ✅ Complete | Refresh rotation with replay detection, family-based revocation |
 
 ---
 
@@ -48,7 +49,7 @@ progress:
 |-------|------|-------------|--------|
 | 1 | Backend Core Infrastructure | 8 | ✅ Complete (5/5 plans) |
 | 2 | Error Handling, API Structure & Health | 5 | ✅ Complete (4/4 plans) |
-| 3 | Authentication — Core Flows | 6 | ⬜ Not started |
+| 3 | Authentication — Core Flows | 6 | ✅ Complete (4/4 plans) |
 | 4 | Authentication — Advanced & Password | 4 | ⬜ Not started |
 | 5 | User Profile & Account Management | 3 | ⬜ Not started |
 | 6 | Tier System & Permissions | 6 | ⬜ Not started |
@@ -119,9 +120,9 @@ None currently.
 
 ## Session Continuity
 
-**Stopped at:** Phase 3 context gathered
-**Resume file:** .planning/phases/03-authentication-core-flows/03-CONTEXT.md
-**Next action:** Begin Phase 3 (Authentication — Core Flows)
+**Stopped at:** Phase 3 complete, ready for Phase 4
+**Resume file:** .planning/phases/03-authentication-core-flows/03-VERIFICATION.md
+**Next action:** Begin Phase 4 (Authentication — Advanced & Password Management)
 
 ---
 

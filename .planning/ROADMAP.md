@@ -74,6 +74,9 @@
 
 **Why here:** Authentication is the prerequisite for every protected endpoint. The JWT + cookie pattern must be established before any user-facing features.
 
+**Status:** ✅ Complete — 4/4 plans complete (2026-04-10)
+**Plans progress:** 03-01 ✅ User Model, Repository & Registration | 03-02 ✅ JWT Token System & Security | 03-03 ✅ Auth Routes (Login, Logout, Refresh, Verify) | 03-04 ✅ Dependencies, Bootstrap & Integration Tests
+
 ### Requirements
 
 | ID | Requirement |
