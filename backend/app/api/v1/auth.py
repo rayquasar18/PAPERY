@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_active_user, get_current_user
 from app.configs import settings
 from app.core.db.session import get_session
 from app.core.exceptions import NotFoundError, UnauthorizedError
@@ -30,12 +30,14 @@ from app.infra.oauth.google import GoogleOAuthProvider
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
     RegisterRequest,
     ResendVerificationRequest,
     ResetPasswordRequest,
+    SetPasswordRequest,
     UserPublicRead,
     VerifyEmailRequest,
 )
@@ -520,22 +522,68 @@ async def github_callback(
         logger.warning("GitHub OAuth: invalid state parameter")
         return RedirectResponse(url=f"{frontend_url}/login?error=oauth_csrf", status_code=302)
 
-    try:
-        provider = _get_github_provider()
-        access_token = await provider.get_access_token(code)
-        user_info = await provider.get_user_info(access_token)
-        user = await auth_service.oauth_login_or_register(db, user_info)
-    except Exception:
-        logger.exception("GitHub OAuth callback failed")
-        return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
-
-    # Issue JWT token pair
-    access_jwt, refresh_jwt = create_token_pair(user.uuid)
-    refresh_payload = decode_token(refresh_jwt)
-    await register_token_in_family(refresh_payload.family, refresh_payload.jti)  # type: ignore[arg-type]
-    await track_user_family(user.uuid, refresh_payload.family)  # type: ignore[arg-type]
-
     # Set cookies on redirect response
     redirect = RedirectResponse(url=f"{frontend_url}/dashboard", status_code=302)
     _set_auth_cookies(redirect, access_jwt, refresh_jwt)
     return redirect
+
+
+# ---------------------------------------------------------------------------
+# 14. POST /auth/change-password
+# ---------------------------------------------------------------------------
+@router.post("/change-password", response_model=MessageResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_session),
+) -> MessageResponse:
+    """Change password for an authenticated user with an existing password.
+
+    Requires current password verification. Invalidates all sessions
+    after successful change (forces re-login on all devices).
+
+    Rate limit: 5 requests / minute per user.
+    """
+    await check_rate_limit(
+        f"auth:change-password:{user.uuid}",
+        max_requests=5,
+        window_seconds=60,
+    )
+
+    await auth_service.change_password(
+        db, user, body.current_password, body.new_password
+    )
+
+    return MessageResponse(
+        message="Password changed successfully. Please log in again.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15. POST /auth/set-password
+# ---------------------------------------------------------------------------
+@router.post("/set-password", response_model=MessageResponse)
+async def set_password(
+    body: SetPasswordRequest,
+    request: Request,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_session),
+) -> MessageResponse:
+    """Set a password for an OAuth-only user (no existing password).
+
+    Only allowed when the user has no password set (hashed_password is NULL).
+
+    Rate limit: 5 requests / minute per user.
+    """
+    await check_rate_limit(
+        f"auth:set-password:{user.uuid}",
+        max_requests=5,
+        window_seconds=60,
+    )
+
+    await auth_service.set_password(db, user, body.new_password)
+
+    return MessageResponse(
+        message="Password set successfully. You can now log in with email and password.",
+    )
