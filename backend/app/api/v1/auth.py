@@ -27,6 +27,7 @@ from app.core.security import (
 )
 from app.infra.oauth.github import GitHubOAuthProvider
 from app.infra.oauth.google import GoogleOAuthProvider
+from app.middleware.rate_limit import limiter
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -41,7 +42,6 @@ from app.schemas.auth import (
     UserPublicRead,
     VerifyEmailRequest,
 )
-from app.middleware.rate_limit import limiter
 from app.services.auth_service import AuthService
 from app.utils.cookies import clear_auth_cookies
 from app.utils.rate_limit import check_rate_limit
@@ -297,6 +297,7 @@ async def resend_verification(
 # 8. POST /auth/forgot-password
 # ---------------------------------------------------------------------------
 @router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit("3/minute")
 async def forgot_password(
     body: ForgotPasswordRequest,
     request: Request,
@@ -304,16 +305,9 @@ async def forgot_password(
 ) -> MessageResponse:
     """Request a password reset email.
 
-    Rate limit: 3 requests / minute per email + IP combination.
+    Rate limit: 3 requests / minute per IP (enforced by slowapi).
     Anti-enumeration: always returns the same success message.
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(
-        f"auth:forgot-password:{body.email.lower()}:{client_ip}",
-        max_requests=3,
-        window_seconds=60,
-    )
-
     # Fire-and-forget (best effort)
     try:
         service = AuthService(db)
@@ -330,6 +324,7 @@ async def forgot_password(
 # 9. POST /auth/reset-password
 # ---------------------------------------------------------------------------
 @router.post("/reset-password", response_model=MessageResponse)
+@limiter.limit("5/minute")
 async def reset_password(
     body: ResetPasswordRequest,
     request: Request,
@@ -337,15 +332,8 @@ async def reset_password(
 ) -> MessageResponse:
     """Reset password using a valid reset token.
 
-    Rate limit: 5 requests / minute per IP.
+    Rate limit: 5 requests / minute per IP (enforced by slowapi).
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(
-        f"auth:reset-password:{client_ip}",
-        max_requests=5,
-        window_seconds=60,
-    )
-
     service = AuthService(db)
     await service.reset_password(body.token, body.new_password)
 
@@ -381,14 +369,12 @@ def _get_github_provider() -> GitHubOAuthProvider:
 # 10. GET /auth/google — initiate Google OAuth
 # ---------------------------------------------------------------------------
 @router.get("/google")
+@limiter.limit("10/minute")
 async def google_auth(request: Request) -> RedirectResponse:
     """Redirect user to Google OAuth consent page.
 
-    Rate limit: 10 requests / minute per IP.
+    Rate limit: 10 requests / minute per IP (enforced by slowapi).
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(f"auth:oauth:google:{client_ip}", max_requests=10, window_seconds=60)
-
     provider = _get_google_provider()
     state = await create_oauth_state("google")
     auth_url = provider.get_authorization_url(state)
@@ -452,14 +438,12 @@ async def google_callback(
 # 12. GET /auth/github — initiate GitHub OAuth
 # ---------------------------------------------------------------------------
 @router.get("/github")
+@limiter.limit("10/minute")
 async def github_auth(request: Request) -> RedirectResponse:
     """Redirect user to GitHub OAuth consent page.
 
-    Rate limit: 10 requests / minute per IP.
+    Rate limit: 10 requests / minute per IP (enforced by slowapi).
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(f"auth:oauth:github:{client_ip}", max_requests=10, window_seconds=60)
-
     provider = _get_github_provider()
     state = await create_oauth_state("github")
     auth_url = provider.get_authorization_url(state)

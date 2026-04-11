@@ -6,6 +6,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1 import api_v1_router
 from app.configs import settings
@@ -13,6 +16,7 @@ from app.core.db import session as db_session
 from app.core.exceptions.handlers import register_exception_handlers
 from app.infra.minio import client as minio_client
 from app.infra.redis import client as redis_client
+from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIDMiddleware
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Attach limiter to app state (required by slowapi)
+app.state.limiter = limiter
+
 
 # --- Middleware (order matters: first added = outermost) ---
 
@@ -56,12 +63,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# SlowAPI rate limiting middleware — processes @limiter.limit() decorators
+app.add_middleware(SlowAPIMiddleware)
+
 # Request ID middleware — sets request.state.request_id for all requests
 app.add_middleware(RequestIDMiddleware)
 
 
 # --- Exception Handlers ---
 register_exception_handlers(app)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # --- Routes ---

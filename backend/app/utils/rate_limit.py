@@ -1,10 +1,19 @@
 """Rate limiting utility using Redis sliding window counter.
 
+.. deprecated::
+    IP-based rate limiting on public endpoints has been migrated to slowapi
+    (see ``app.middleware.rate_limit``). This module is retained **only** for
+    user-UUID-keyed limits on authenticated endpoints where slowapi's
+    decorator model does not integrate cleanly with FastAPI's DI.
+
+    Do NOT add new IP-based rate limit calls here — use ``@limiter.limit()``
+    from ``app.middleware.rate_limit`` instead.
+
 Uses a simple INCR + EXPIRE strategy per key. The key encodes
 the resource (endpoint) and the caller identity (IP or user UUID).
 
 Usage:
-    await check_rate_limit(f"auth:login:{client_ip}", max_requests=5, window_seconds=60)
+    await check_rate_limit(f"auth:change-password:{user.uuid}", max_requests=5, window_seconds=60)
 """
 
 import logging

@@ -25,6 +25,7 @@ dependencies = [
     "jinja2>=3.1.0",
     "pillow>=10.0.0",
     "stripe>=10.0.0",
+    "slowapi>=0.1.9",
 ]
 
 [dependency-groups]
@@ -74,6 +75,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "minio.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "slowapi.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
