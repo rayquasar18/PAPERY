@@ -21,6 +21,22 @@ class User(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
+    # Tier subscription
+    tier_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("tier.id", ondelete="RESTRICT"),
+        nullable=True,  # nullable during migration; seeder + migration will backfill
+        index=True,
+    )
+
+    # Stripe customer link
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True
+    )
+
+    # Tier relationship — selectin loading avoids N+1 in API responses
+    tier: Mapped["Tier"] = relationship("Tier", lazy="selectin")
+
     # Relationship to OAuth accounts (one user -> many OAuth providers)
     oauth_accounts: Mapped[list[OAuthAccount]] = relationship(
         "OAuthAccount", back_populates="user", cascade="all, delete-orphan"
