@@ -6,42 +6,24 @@ import logging
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.configs import settings
 from app.core.db.session import get_session
 from app.models.user import User
+from app.schemas.billing import (
+    CheckoutRequest,
+    CheckoutResponse,
+    PortalResponse,
+    SubscriptionStatusResponse,
+)
 from app.services.stripe_service import StripeService
 from app.services.tier_service import TierService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["billing"])
-
-
-# --------------------------------------------------------------------------
-# Request/Response schemas (local to this module)
-# --------------------------------------------------------------------------
-
-
-class CheckoutRequest(BaseModel):
-    """Request body for creating a checkout session."""
-
-    tier_slug: str = Field(..., min_length=1, max_length=50)
-
-
-class CheckoutResponse(BaseModel):
-    """Response with the Stripe Checkout Session URL."""
-
-    checkout_url: str
-
-
-class PortalResponse(BaseModel):
-    """Response with the Stripe Customer Portal URL."""
-
-    portal_url: str
 
 
 # --------------------------------------------------------------------------
@@ -81,11 +63,11 @@ async def create_portal(
     return PortalResponse(portal_url=url)
 
 
-@router.get("/subscription")
+@router.get("/subscription", response_model=SubscriptionStatusResponse)
 async def get_subscription(
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
-) -> dict:
+) -> SubscriptionStatusResponse:
     """Get the current user's subscription status."""
     stripe_service = StripeService(db)
     return await stripe_service.get_subscription_status(user)
@@ -122,7 +104,7 @@ async def stripe_webhook(
     except ValueError:
         logger.warning("Stripe webhook: invalid payload")
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
+    except stripe.SignatureVerificationError:
         logger.warning("Stripe webhook: invalid signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
 

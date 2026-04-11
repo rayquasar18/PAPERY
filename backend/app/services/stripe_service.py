@@ -5,8 +5,8 @@ Manages Stripe integration for subscription billing:
 - Customer Portal session (self-service management)
 - Webhook event handlers (tier changes, payment events)
 
-All Stripe API calls use the legacy static API pattern (stripe.api_key)
-for simplicity. The StripeClient pattern can be adopted in v2.
+All Stripe API calls use the static API key pattern (set once at module
+import time). The per-request StripeClient pattern can be adopted in v2.
 
 Usage:
     service = StripeService(db)
@@ -22,10 +22,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.configs import settings
 from app.core.exceptions import BadRequestError, NotFoundError
+
+# Set API key once at module level — avoids redundant global mutation on
+# every StripeService instantiation and is safe for async (single process).
+stripe.api_key = settings.STRIPE_SECRET_KEY
 from app.models.tier import Tier
 from app.models.user import User
 from app.repositories.tier_repository import TierRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.billing import SubscriptionStatusResponse
 from app.utils.tier_cache import invalidate_tier_cache
 
 logger = logging.getLogger(__name__)
@@ -123,17 +128,19 @@ class StripeService:
         logger.info("Created Stripe portal session for user %s", user.uuid)
         return session.url
 
-    async def get_subscription_status(self, user: User) -> dict:
+    async def get_subscription_status(self, user: User) -> SubscriptionStatusResponse:
         """Get the user's current subscription status.
 
-        Returns a dict with tier info and Stripe subscription state.
+        Returns a typed SubscriptionStatusResponse with tier info and Stripe subscription state.
         """
         tier = user.tier
-        result: dict = {
-            "tier_slug": tier.slug if tier else "free",
-            "tier_name": tier.name if tier else "Free",
-            "has_stripe_subscription": user.stripe_customer_id is not None,
-        }
+        tier_slug = tier.slug if tier else "free"
+        tier_name = tier.name if tier else "Free"
+        has_stripe_subscription = user.stripe_customer_id is not None
+
+        subscription_status: str | None = None
+        current_period_end: int | None = None
+        cancel_at_period_end: bool | None = None
 
         if user.stripe_customer_id:
             try:
@@ -144,16 +151,23 @@ class StripeService:
                 )
                 if subscriptions.data:
                     sub = subscriptions.data[0]
-                    result["subscription_status"] = sub.status
-                    result["current_period_end"] = sub.current_period_end
-                    result["cancel_at_period_end"] = sub.cancel_at_period_end
+                    subscription_status = sub.status
+                    current_period_end = sub.current_period_end
+                    cancel_at_period_end = sub.cancel_at_period_end
                 else:
-                    result["subscription_status"] = "none"
+                    subscription_status = "none"
             except stripe.error.StripeError as exc:
                 logger.warning("Stripe API error fetching subscription: %s", exc)
-                result["subscription_status"] = "unknown"
+                subscription_status = "unknown"
 
-        return result
+        return SubscriptionStatusResponse(
+            tier_slug=tier_slug,
+            tier_name=tier_name,
+            has_stripe_subscription=has_stripe_subscription,
+            subscription_status=subscription_status,
+            current_period_end=current_period_end,
+            cancel_at_period_end=cancel_at_period_end,
+        )
 
     # ------------------------------------------------------------------
     # Webhook event handlers (called from billing router)
