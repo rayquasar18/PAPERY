@@ -43,6 +43,7 @@ from app.schemas.auth import (
 )
 import app.services.auth_service as auth_service
 from app.services.auth_service import AuthService
+from app.utils.cookies import clear_auth_cookies
 from app.utils.rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -84,23 +85,6 @@ def _set_auth_cookies(
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )
 
-
-def _clear_auth_cookies(response: Response) -> None:
-    """Delete both auth cookies."""
-    response.delete_cookie(
-        key="access_token",
-        httponly=True,
-        secure=_SECURE_COOKIE,
-        samesite="lax",
-        path="/",
-    )
-    response.delete_cookie(
-        key="refresh_token",
-        httponly=True,
-        secure=_SECURE_COOKIE,
-        samesite="lax",
-        path="/api/v1/auth/refresh",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +196,7 @@ async def logout(
         service = AuthService(db)
         await service.logout_user(access_payload, refresh_jti=refresh_jti)
 
-    _clear_auth_cookies(response)
+    clear_auth_cookies(response)
 
     return MessageResponse(message="Logged out successfully.")
 
