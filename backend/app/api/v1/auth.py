@@ -41,7 +41,7 @@ from app.schemas.auth import (
     UserPublicRead,
     VerifyEmailRequest,
 )
-import app.services.auth_service as auth_service
+from app.middleware.rate_limit import limiter
 from app.services.auth_service import AuthService
 from app.utils.cookies import clear_auth_cookies
 from app.utils.rate_limit import check_rate_limit
@@ -91,6 +91,7 @@ def _set_auth_cookies(
 # 1. POST /auth/register
 # ---------------------------------------------------------------------------
 @router.post("/register", response_model=AuthResponse, status_code=201)
+@limiter.limit("3/minute")
 async def register(
     body: RegisterRequest,
     request: Request,
@@ -99,11 +100,8 @@ async def register(
 ) -> AuthResponse:
     """Register a new local user account.
 
-    Rate limit: 3 requests / minute per IP.
+    Rate limit: 3 requests / minute per IP (enforced by slowapi).
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(f"auth:register:{client_ip}", max_requests=3, window_seconds=60)
-
     service = AuthService(db)
     user = await service.register_user(body.email, body.password)
 
@@ -134,6 +132,7 @@ async def register(
 # 2. POST /auth/login
 # ---------------------------------------------------------------------------
 @router.post("/login", response_model=AuthResponse)
+@limiter.limit("5/minute")
 async def login(
     body: LoginRequest,
     request: Request,
@@ -142,11 +141,8 @@ async def login(
 ) -> AuthResponse:
     """Authenticate with email + password.
 
-    Rate limit: 5 requests / minute per IP.
+    Rate limit: 5 requests / minute per IP (enforced by slowapi).
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(f"auth:login:{client_ip}", max_requests=5, window_seconds=60)
-
     service = AuthService(db)
     user = await service.authenticate_user(body.email, body.password)
 
@@ -267,6 +263,7 @@ async def verify_email(
 # 7. POST /auth/resend-verification
 # ---------------------------------------------------------------------------
 @router.post("/resend-verification", response_model=MessageResponse)
+@limiter.limit("1/minute")
 async def resend_verification(
     body: ResendVerificationRequest,
     request: Request,
@@ -274,17 +271,10 @@ async def resend_verification(
 ) -> MessageResponse:
     """Resend verification email.
 
-    Rate limit: 1 request / 60 seconds per email address.
+    Rate limit: 1 request / 60 seconds per IP (enforced by slowapi).
     Returns the same success message regardless of whether the email
     exists — this prevents user enumeration.
     """
-    client_ip = request.client.host if request.client else "unknown"
-    await check_rate_limit(
-        f"auth:resend-verification:{body.email.lower()}:{client_ip}",
-        max_requests=1,
-        window_seconds=60,
-    )
-
     # Anti-enumeration: always return success, even if user doesn't exist
     service = AuthService(db)
     user = await service.get_user_by_email(body.email)
@@ -440,7 +430,8 @@ async def google_callback(
         provider = _get_google_provider()
         access_token = await provider.get_access_token(code)
         user_info = await provider.get_user_info(access_token)
-        user = await auth_service.oauth_login_or_register(db, user_info)
+        service = AuthService(db)
+        user = await service.oauth_login_or_register(user_info)
     except Exception:
         logger.exception("Google OAuth callback failed")
         return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
@@ -510,7 +501,8 @@ async def github_callback(
         provider = _get_github_provider()
         access_token = await provider.get_access_token(code)
         user_info = await provider.get_user_info(access_token)
-        user = await auth_service.oauth_login_or_register(db, user_info)
+        service = AuthService(db)
+        user = await service.oauth_login_or_register(user_info)
     except Exception:
         logger.exception("GitHub OAuth callback failed")
         return RedirectResponse(url=f"{frontend_url}/login?error=oauth_failed", status_code=302)
@@ -550,9 +542,8 @@ async def change_password(
         window_seconds=60,
     )
 
-    await auth_service.change_password(
-        db, user, body.current_password, body.new_password
-    )
+    service = AuthService(db)
+    await service.change_password(user, body.current_password, body.new_password)
 
     return MessageResponse(
         message="Password changed successfully. Please log in again.",
@@ -581,7 +572,8 @@ async def set_password(
         window_seconds=60,
     )
 
-    await auth_service.set_password(db, user, body.new_password)
+    service = AuthService(db)
+    await service.set_password(user, body.new_password)
 
     return MessageResponse(
         message="Password set successfully. You can now log in with email and password.",

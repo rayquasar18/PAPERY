@@ -201,7 +201,7 @@ class TestOAuthCallbackSuccess:
             ),
             patch("app.api.v1.auth._get_google_provider") as mock_provider_factory,
             patch(
-                "app.api.v1.auth.auth_service.oauth_login_or_register",
+                "app.services.auth_service.AuthService.oauth_login_or_register",
                 new_callable=AsyncMock,
                 return_value=mock_user,
             ),
@@ -258,7 +258,7 @@ class TestOAuthCallbackSuccess:
             ),
             patch("app.api.v1.auth._get_github_provider") as mock_provider_factory,
             patch(
-                "app.api.v1.auth.auth_service.oauth_login_or_register",
+                "app.services.auth_service.AuthService.oauth_login_or_register",
                 new_callable=AsyncMock,
                 return_value=mock_user,
             ),
@@ -383,7 +383,7 @@ class TestOAuthCallbackSuccess:
             ),
             patch("app.api.v1.auth._get_github_provider") as mock_provider_factory,
             patch(
-                "app.api.v1.auth.auth_service.oauth_login_or_register",
+                "app.services.auth_service.AuthService.oauth_login_or_register",
                 new=mock_oauth_login,
             ),
             patch("app.api.v1.auth.create_token_pair", new=mock_create_pair),

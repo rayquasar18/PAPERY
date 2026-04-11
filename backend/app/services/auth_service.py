@@ -401,174 +401,192 @@ class AuthService:
         )
         logger.info("Created superuser: %s", admin_email)
 
+    # ------------------------------------------------------------------
+    # OAuth login / registration
+    # ------------------------------------------------------------------
+
+    async def oauth_login_or_register(self, user_info: OAuthUserInfo) -> User:
+        """Find or create a user from OAuth provider info.
+
+        Logic (D-14, D-15):
+        1. If OAuthAccount exists for this provider+provider_user_id → return existing user (login)
+        2. If a User with the same email exists → auto-link OAuth account (D-14)
+           - But reject if user already has a DIFFERENT OAuth provider linked (D-15)
+        3. Otherwise → create new User + OAuthAccount (registration)
+
+        OAuth users are auto-verified (is_verified=True) because the provider
+        guarantees email ownership.
+        """
+        oauth_repo = OAuthAccountRepository(self._db)
+
+        # 1. Check for existing OAuth account (returning user)
+        existing_oauth = await oauth_repo.get(
+            provider=user_info.provider,
+            provider_user_id=user_info.provider_user_id,
+        )
+        if existing_oauth is not None:
+            user = await self._user_repo.get(id=existing_oauth.user_id)
+            if user is None or not user.is_active:
+                raise UnauthorizedError(detail="Account not found or deactivated")
+            return user
+
+        # 2. Check for existing user by email (auto-link per D-14)
+        existing_user = await self._user_repo.get(email=user_info.email.lower())
+        if existing_user is not None:
+            if not existing_user.is_active:
+                raise UnauthorizedError(detail="Account is deactivated")
+
+            # D-15: Single OAuth provider per user
+            existing_oauth_for_user = await oauth_repo.get(user_id=existing_user.id)
+            if existing_oauth_for_user is not None:
+                raise ConflictError(
+                    detail="This account is already linked to another OAuth provider. "
+                    "Please sign in with your existing provider or use email/password.",
+                )
+
+            # Link new OAuth provider to existing user
+            await oauth_repo.create_oauth_account(
+                user_id=existing_user.id,
+                provider=user_info.provider,
+                provider_user_id=user_info.provider_user_id,
+                provider_email=user_info.email,
+            )
+
+            # Auto-verify if not already (email confirmed by OAuth provider)
+            if not existing_user.is_verified:
+                existing_user.is_verified = True
+                await self._user_repo.update(existing_user)
+
+            logger.info(
+                "Linked %s OAuth to existing user=%s",
+                user_info.provider,
+                existing_user.uuid,
+            )
+            return existing_user
+
+        # 3. Create new user + OAuth account
+        free_tier_id = await self._get_free_tier_id()
+
+        new_user = await self._user_repo.create_user(
+            email=user_info.email.lower(),
+            hashed_password=None,  # OAuth-only — no password
+            is_active=True,
+            is_verified=True,  # Provider guarantees email ownership
+            is_superuser=False,
+            tier_id=free_tier_id,
+        )
+
+        # Set display name from provider if available
+        if user_info.name and not new_user.display_name:
+            new_user.display_name = user_info.name
+            await self._user_repo.update(new_user)
+
+        await oauth_repo.create_oauth_account(
+            user_id=new_user.id,
+            provider=user_info.provider,
+            provider_user_id=user_info.provider_user_id,
+            provider_email=user_info.email,
+        )
+
+        logger.info(
+            "Created new user via %s OAuth: user=%s email=%s",
+            user_info.provider,
+            new_user.uuid,
+            new_user.email,
+        )
+        return new_user
+
+    # ------------------------------------------------------------------
+    # Change password (authenticated user with existing password)
+    # ------------------------------------------------------------------
+
+    async def change_password(
+        self,
+        user: User,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        """Change password for a user who has an existing password.
+
+        Validates the current password, updates to the new one, and
+        invalidates ALL active sessions (D-17: forces re-login everywhere).
+
+        Raises:
+            BadRequestError: If the user has no password (OAuth-only).
+            UnauthorizedError: If the current password is incorrect.
+        """
+        if user.hashed_password is None:
+            raise BadRequestError(
+                detail="This account uses social login and has no password set. "
+                "Use the set-password endpoint instead.",
+            )
+
+        if not verify_password(current_password, user.hashed_password):
+            raise UnauthorizedError(detail="Current password is incorrect")
+
+        user.hashed_password = hash_password(new_password)
+        await self._user_repo.update(user)
+
+        # Invalidate ALL sessions for this user (D-17)
+        await invalidate_all_user_sessions(user.uuid)
+
+        logger.info("Password changed for user=%s — all sessions invalidated", user.uuid)
+
+    # ------------------------------------------------------------------
+    # Set password (OAuth-only users — no current password)
+    # ------------------------------------------------------------------
+
+    async def set_password(self, user: User, new_password: str) -> None:
+        """Set a password for an OAuth-only user (no existing password).
+
+        Only allowed when user.hashed_password is NULL. Does NOT invalidate
+        existing sessions (user has no password-based sessions to protect).
+
+        Raises:
+            BadRequestError: If the user already has a password set.
+        """
+        if user.hashed_password is not None:
+            raise BadRequestError(
+                detail="Account already has a password. "
+                "Use the change-password endpoint instead.",
+            )
+
+        user.hashed_password = hash_password(new_password)
+        await self._user_repo.update(user)
+
+        logger.info("Password set for OAuth-only user=%s", user.uuid)
+
 
 # ---------------------------------------------------------------------------
-# OAuth login / registration (module-level — not class-bound)
+# Deprecated module-level wrappers — kept for backward compatibility with
+# existing tests and scripts. New code should use AuthService(db).method().
 # ---------------------------------------------------------------------------
 
 async def oauth_login_or_register(
     db: AsyncSession,
     user_info: OAuthUserInfo,
 ) -> User:
-    """Find or create a user from OAuth provider info.
-
-    Logic (D-14, D-15):
-    1. If OAuthAccount exists for this provider+provider_user_id → return existing user (login)
-    2. If a User with the same email exists → auto-link OAuth account (D-14)
-       - But reject if user already has a DIFFERENT OAuth provider linked (D-15)
-    3. Otherwise → create new User + OAuthAccount (registration)
-
-    OAuth users are auto-verified (is_verified=True) because the provider
-    guarantees email ownership.
-    """
-    oauth_repo = OAuthAccountRepository(db)
-    user_repo = UserRepository(db)
-
-    # 1. Check for existing OAuth account (returning user)
-    existing_oauth = await oauth_repo.get(
-        provider=user_info.provider,
-        provider_user_id=user_info.provider_user_id,
-    )
-    if existing_oauth is not None:
-        user = await user_repo.get(id=existing_oauth.user_id)
-        if user is None or not user.is_active:
-            raise UnauthorizedError(detail="Account not found or deactivated")
-        return user
-
-    # 2. Check for existing user by email (auto-link per D-14)
-    existing_user = await user_repo.get(email=user_info.email.lower())
-    if existing_user is not None:
-        if not existing_user.is_active:
-            raise UnauthorizedError(detail="Account is deactivated")
-
-        # D-15: Single OAuth provider per user
-        existing_oauth_for_user = await oauth_repo.get(user_id=existing_user.id)
-        if existing_oauth_for_user is not None:
-            raise ConflictError(
-                detail="This account is already linked to another OAuth provider. "
-                "Please sign in with your existing provider or use email/password.",
-            )
-
-        # Link new OAuth provider to existing user
-        await oauth_repo.create_oauth_account(
-            user_id=existing_user.id,
-            provider=user_info.provider,
-            provider_user_id=user_info.provider_user_id,
-            provider_email=user_info.email,
-        )
-
-        # Auto-verify if not already (email confirmed by OAuth provider)
-        if not existing_user.is_verified:
-            existing_user.is_verified = True
-            await user_repo.update(existing_user)
-
-        logger.info(
-            "Linked %s OAuth to existing user=%s",
-            user_info.provider,
-            existing_user.uuid,
-        )
-        return existing_user
-
-    # 3. Create new user + OAuth account
-    tier_repo = TierRepository(db)
-    free_tier = await tier_repo.get(slug="free")
-    if free_tier is None:
-        raise RuntimeError("Free tier not found — run seed_tiers.py")
-
-    new_user = await user_repo.create_user(
-        email=user_info.email.lower(),
-        hashed_password=None,  # OAuth-only — no password
-        is_active=True,
-        is_verified=True,  # Provider guarantees email ownership
-        is_superuser=False,
-        tier_id=free_tier.id,
-    )
-
-    # Set display name from provider if available
-    if user_info.name and not new_user.display_name:
-        new_user.display_name = user_info.name
-        await user_repo.update(new_user)
-
-    await oauth_repo.create_oauth_account(
-        user_id=new_user.id,
-        provider=user_info.provider,
-        provider_user_id=user_info.provider_user_id,
-        provider_email=user_info.email,
-    )
-
-    logger.info(
-        "Created new user via %s OAuth: user=%s email=%s",
-        user_info.provider,
-        new_user.uuid,
-        new_user.email,
-    )
-    return new_user
+    """Deprecated: use ``AuthService(db).oauth_login_or_register(user_info)`` instead."""
+    return await AuthService(db).oauth_login_or_register(user_info)
 
 
-# ---------------------------------------------------------------------------
-# Change password (authenticated user with existing password)
-# ---------------------------------------------------------------------------
 async def change_password(
     db: AsyncSession,
     user: User,
     current_password: str,
     new_password: str,
 ) -> None:
-    """Change password for a user who has an existing password.
-
-    Validates the current password, updates to the new one, and
-    invalidates ALL active sessions (D-17: forces re-login everywhere).
-
-    Raises:
-        BadRequestError: If the user has no password (OAuth-only).
-        UnauthorizedError: If the current password is incorrect.
-    """
-    if user.hashed_password is None:
-        raise BadRequestError(
-            detail="This account uses social login and has no password set. "
-            "Use the set-password endpoint instead.",
-        )
-
-    if not verify_password(current_password, user.hashed_password):
-        raise UnauthorizedError(detail="Current password is incorrect")
-
-    user_repo = UserRepository(db)
-    user.hashed_password = hash_password(new_password)
-    await user_repo.update(user)
-
-    # Invalidate ALL sessions for this user (D-17)
-    await invalidate_all_user_sessions(user.uuid)
-
-    logger.info("Password changed for user=%s — all sessions invalidated", user.uuid)
+    """Deprecated: use ``AuthService(db).change_password(user, ...)`` instead."""
+    await AuthService(db).change_password(user, current_password, new_password)
 
 
-# ---------------------------------------------------------------------------
-# Set password (OAuth-only users — no current password)
-# ---------------------------------------------------------------------------
 async def set_password(
     db: AsyncSession,
     user: User,
     new_password: str,
 ) -> None:
-    """Set a password for an OAuth-only user (no existing password).
-
-    Only allowed when user.hashed_password is NULL. Does NOT invalidate
-    existing sessions (user has no password-based sessions to protect).
-
-    Raises:
-        BadRequestError: If the user already has a password set.
-    """
-    if user.hashed_password is not None:
-        raise BadRequestError(
-            detail="Account already has a password. "
-            "Use the change-password endpoint instead.",
-        )
-
-    user_repo = UserRepository(db)
-    user.hashed_password = hash_password(new_password)
-    await user_repo.update(user)
-
-    logger.info("Password set for OAuth-only user=%s", user.uuid)
+    """Deprecated: use ``AuthService(db).set_password(user, ...)`` instead."""
+    await AuthService(db).set_password(user, new_password)
 
 
 # ---------------------------------------------------------------------------

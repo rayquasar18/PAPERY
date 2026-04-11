@@ -104,7 +104,7 @@ class TestChangePassword:
                 return_value=mock_user,
             ),
             patch(
-                "app.services.auth_service.change_password",
+                "app.services.auth_service.AuthService.change_password",
                 new_callable=AsyncMock,
             ) as mock_change,
             patch(
@@ -149,7 +149,7 @@ class TestChangePassword:
                 return_value=mock_user,
             ),
             patch(
-                "app.services.auth_service.change_password",
+                "app.services.auth_service.AuthService.change_password",
                 new_callable=AsyncMock,
                 side_effect=UnauthorizedError(detail="Current password is incorrect"),
             ),
@@ -273,7 +273,7 @@ class TestSetPassword:
                 return_value=mock_oauth_user,
             ),
             patch(
-                "app.services.auth_service.set_password",
+                "app.services.auth_service.AuthService.set_password",
                 new_callable=AsyncMock,
             ) as mock_set,
             patch(
