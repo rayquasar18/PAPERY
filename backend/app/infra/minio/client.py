@@ -129,3 +129,28 @@ async def upload_file(
             content_type=content_type,
         ),
     )
+
+
+async def delete_file(object_name: str) -> None:
+    """Delete a file from MinIO. Wraps sync call in executor for async safety.
+
+    Args:
+        object_name: The object key in the bucket to delete.
+
+    Raises:
+        RuntimeError: If MinIO client is not initialized.
+    """
+    import asyncio
+
+    if client is None:
+        raise RuntimeError("MinIO not initialized. Call minio_client.init() first.")
+
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None,
+        partial(
+            client.remove_object,
+            bucket_name=settings.MINIO_BUCKET_NAME,
+            object_name=object_name,
+        ),
+    )
