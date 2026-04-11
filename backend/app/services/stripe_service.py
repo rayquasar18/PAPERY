@@ -22,16 +22,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.configs import settings
 from app.core.exceptions import BadRequestError, NotFoundError
-
-# Set API key once at module level — avoids redundant global mutation on
-# every StripeService instantiation and is safe for async (single process).
-stripe.api_key = settings.STRIPE_SECRET_KEY
 from app.models.tier import Tier
 from app.models.user import User
 from app.repositories.tier_repository import TierRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.billing import SubscriptionStatusResponse
 from app.utils.tier_cache import invalidate_tier_cache
+
+# Set API key once at module level — avoids redundant global mutation on
+# every StripeService instantiation and is safe for async (single process).
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +47,6 @@ class StripeService:
         self._db: AsyncSession = db
         self._user_repo: UserRepository = UserRepository(db)
         self._tier_repo: TierRepository = TierRepository(db)
-        # Set API key for all Stripe operations in this service
-        stripe.api_key = settings.STRIPE_SECRET_KEY
 
     # ------------------------------------------------------------------
     # Checkout & Portal (user-facing)
@@ -156,7 +154,7 @@ class StripeService:
                     cancel_at_period_end = sub.cancel_at_period_end
                 else:
                     subscription_status = "none"
-            except stripe.error.StripeError as exc:
+            except stripe.StripeError as exc:
                 logger.warning("Stripe API error fetching subscription: %s", exc)
                 subscription_status = "unknown"
 
