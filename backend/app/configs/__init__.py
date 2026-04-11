@@ -12,6 +12,7 @@ from app.configs.minio import MinioConfig
 from app.configs.oauth import OAuthConfig
 from app.configs.redis import RedisConfig
 from app.configs.security import SecurityConfig
+from app.configs.stripe import StripeConfig
 
 
 class AppSettings(
@@ -24,6 +25,7 @@ class AppSettings(
     CorsConfig,
     AdminConfig,
     OAuthConfig,
+    StripeConfig,
 ):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -50,6 +52,9 @@ class AppSettings(
                 )
         if self.ENVIRONMENT == "production" and not self.SMTP_HOST:
             raise ValueError("SMTP_HOST is required in production environment")
+        if self.ENVIRONMENT == "production":
+            if not self.STRIPE_WEBHOOK_SECRET:
+                raise ValueError("STRIPE_WEBHOOK_SECRET is required in production environment")
         return self
 
 
