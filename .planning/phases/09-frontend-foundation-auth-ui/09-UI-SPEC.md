@@ -64,13 +64,13 @@ Exceptions:
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px (0.875rem) | Regular (400) | 1.5 (21px) | Default text, form labels, descriptions, table cells |
-| Label | 12px (0.75rem) | Medium (500) | 1.5 (18px) | Form field labels, badges, metadata, timestamps |
+| Label | 12px (0.75rem) | Regular (400) | 1.5 (18px) | Form field labels, badges, metadata, timestamps |
 | Heading | 20px (1.25rem) | Semibold (600) | 1.3 (26px) | Page titles, section headers, card titles |
-| Display | 30px (1.875rem) | Bold (700) | 1.2 (36px) | Auth page branding headline, hero text |
+| Display | 30px (1.875rem) | Semibold (600) | 1.2 (36px) | Auth page branding headline, hero text |
 
-**Weights used:** Regular (400), Medium (500), Semibold (600), Bold (700) — 4 weights total.
+**Weights used:** Regular (400), Semibold (600) — 2 weights total.
 
-> Note: shadcn/ui defaults to 14px body. Inter is optimized for screen readability at 14-16px. 14px chosen for information-dense SaaS layout.
+> Note: shadcn/ui defaults to 14px body. Inter is optimized for screen readability at 14-16px. 14px chosen for information-dense SaaS layout. Two-weight system (Regular + Semibold) maintains clear visual hierarchy while reducing font payload and cognitive complexity.
 
 **Font stack:**
 ```css
@@ -159,6 +159,14 @@ Exceptions:
 |      |                                        |                  |
 +------+----------------------------------------+------------------+
 ```
+
+### Focal Point Declaration
+
+| Page | Primary Focal Point | Rationale |
+|------|-------------------|-----------|
+| Dashboard (empty state) | Empty state illustration + "Create project" CTA button (centered in main content area) | First-time users must immediately see what to do next — the CTA is the only accent-colored element on an otherwise neutral page, creating a clear visual anchor |
+| Dashboard (with data) | Project cards grid (top-left of main content area) | Users return to check on their projects — the first card in reading order serves as the entry point |
+| Auth pages (login/register) | Form panel's primary CTA button ("Sign in" / "Create account") | The form is the sole task — the CTA button draws the eye as the completion target |
 
 ### Responsive Breakpoints (Tailwind v4 defaults)
 
