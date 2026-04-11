@@ -10,7 +10,11 @@ domain-specific factory methods.
 
 from __future__ import annotations
 
+from typing import Any
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.user import User
 from app.repositories.base import BaseRepository
@@ -51,3 +55,21 @@ class UserRepository(BaseRepository[User]):
             is_superuser=is_superuser,
         )
         return await self.create(user)
+
+    async def get_with_oauth_accounts(self, **filters: Any) -> User | None:
+        """Fetch a single user with oauth_accounts eagerly loaded.
+
+        Uses ``selectinload`` to avoid ``MissingGreenlet`` errors in async
+        SQLAlchemy when accessing the ``oauth_accounts`` relationship.
+
+        Usage::
+
+            user = await repo.get_with_oauth_accounts(uuid=some_uuid)
+            providers = [acc.provider for acc in user.oauth_accounts]
+        """
+        stmt = select(User).options(selectinload(User.oauth_accounts))
+        for field, value in filters.items():
+            stmt = stmt.where(getattr(User, field) == value)
+        stmt = self._not_deleted(stmt)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
