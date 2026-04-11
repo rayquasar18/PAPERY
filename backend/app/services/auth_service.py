@@ -42,6 +42,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories.oauth_account_repository import OAuthAccountRepository
+from app.repositories.tier_repository import TierRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import TokenPayload
 from app.schemas.oauth import OAuthUserInfo
@@ -65,10 +66,18 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self._db: AsyncSession = db
         self._user_repo: UserRepository = UserRepository(db)
+        self._tier_repo: TierRepository = TierRepository(db)
 
     # ------------------------------------------------------------------
     # Helper methods — for router-level lookups without direct repo access
     # ------------------------------------------------------------------
+
+    async def _get_free_tier_id(self) -> int:
+        """Resolve the free tier ID. Raises RuntimeError if not seeded."""
+        free_tier = await self._tier_repo.get(slug="free")
+        if free_tier is None:
+            raise RuntimeError("Free tier not found — run seed_tiers.py")
+        return free_tier.id
 
     async def get_user_by_uuid(self, user_uuid: uuid_pkg.UUID) -> User | None:
         """Return a user by UUID, or None if not found."""
@@ -98,12 +107,15 @@ class AuthService:
                 )
             raise ConflictError(detail="Email already registered")
 
+        free_tier_id = await self._get_free_tier_id()
+
         return await self._user_repo.create_user(
             email=email,
             hashed_password=hash_password(password),
             is_active=True,
             is_verified=False,
             is_superuser=False,
+            tier_id=free_tier_id,
         )
 
     # ------------------------------------------------------------------
@@ -378,12 +390,14 @@ class AuthService:
             logger.info("Superuser %s already exists — skipping.", admin_email)
             return
 
+        free_tier_id = await self._get_free_tier_id()
         await self._user_repo.create_user(
             email=admin_email,
             hashed_password=hash_password(admin_password),
             is_active=True,
             is_verified=True,
             is_superuser=True,
+            tier_id=free_tier_id,
         )
         logger.info("Created superuser: %s", admin_email)
 
@@ -456,12 +470,18 @@ async def oauth_login_or_register(
         return existing_user
 
     # 3. Create new user + OAuth account
+    tier_repo = TierRepository(db)
+    free_tier = await tier_repo.get(slug="free")
+    if free_tier is None:
+        raise RuntimeError("Free tier not found — run seed_tiers.py")
+
     new_user = await user_repo.create_user(
         email=user_info.email.lower(),
         hashed_password=None,  # OAuth-only — no password
         is_active=True,
         is_verified=True,  # Provider guarantees email ownership
         is_superuser=False,
+        tier_id=free_tier.id,
     )
 
     # Set display name from provider if available

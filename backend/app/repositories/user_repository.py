@@ -41,6 +41,7 @@ class UserRepository(BaseRepository[User]):
         is_active: bool = True,
         is_verified: bool = False,
         is_superuser: bool = False,
+        tier_id: int | None = None,
     ) -> User:
         """Create and persist a new User record.
 
@@ -53,6 +54,7 @@ class UserRepository(BaseRepository[User]):
             is_active=is_active,
             is_verified=is_verified,
             is_superuser=is_superuser,
+            tier_id=tier_id,
         )
         return await self.create(user)
 
