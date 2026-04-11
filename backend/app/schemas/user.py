@@ -20,7 +20,8 @@ class UserProfileRead(BaseModel):
     is_verified: bool
     is_superuser: bool
     created_at: datetime
-    tier_name: str = "free"
+    tier_name: str
+    tier_slug: str
     has_password: bool = False
     oauth_providers: list[str] = Field(default_factory=list)
 

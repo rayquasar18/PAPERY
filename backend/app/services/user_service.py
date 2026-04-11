@@ -86,7 +86,8 @@ class UserService:
             is_verified=user_with_oauth.is_verified,
             is_superuser=user_with_oauth.is_superuser,
             created_at=user_with_oauth.created_at,
-            tier_name="free",  # Placeholder until Phase 6
+            tier_name=user_with_oauth.tier.name if user_with_oauth.tier else "Free",
+            tier_slug=user_with_oauth.tier.slug if user_with_oauth.tier else "free",
             has_password=user_with_oauth.hashed_password is not None,
             oauth_providers=[acc.provider for acc in user_with_oauth.oauth_accounts],
         )
