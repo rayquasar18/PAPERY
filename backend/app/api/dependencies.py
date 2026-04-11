@@ -18,6 +18,8 @@ from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token, is_token_blacklisted
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
+from app.services.tier_service import TierService
+from app.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +84,54 @@ async def get_current_superuser(
     if not user.is_superuser:
         raise ForbiddenError(detail="Superuser privileges required", error_code="SUPERUSER_REQUIRED")
     return user
+
+
+class RequireFeature:
+    """Dependency that enforces a feature flag from the user's tier.
+
+    Usage on routes:
+        @router.post("/documents/export-pdf")
+        async def export_pdf(user: User = Depends(RequireFeature("can_export_pdf"))):
+            ...
+    """
+
+    def __init__(self, feature: str) -> None:
+        self.feature = feature
+
+    async def __call__(
+        self,
+        user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_session),
+    ) -> User:
+        tier_service = TierService(db)
+        tier_data = await tier_service.get_user_tier_data(user)
+
+        flags = tier_data.get("feature_flags", {})
+        if not flags.get(self.feature, False):
+            raise ForbiddenError(
+                detail=f"Your plan does not include '{self.feature}'. Upgrade to access this feature.",
+                error_code="FEATURE_NOT_AVAILABLE",
+            )
+        return user
+
+
+class CheckUsageLimit:
+    """Dependency that enforces a usage quota for the current billing period.
+
+    Usage on routes:
+        @router.post("/projects")
+        async def create_project(user: User = Depends(CheckUsageLimit("projects"))):
+            ...
+    """
+
+    def __init__(self, metric: str) -> None:
+        self.metric = metric
+
+    async def __call__(
+        self,
+        user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_session),
+    ) -> User:
+        usage_service = UsageService(db)
+        await usage_service.enforce_limit(user, self.metric)
+        return user
