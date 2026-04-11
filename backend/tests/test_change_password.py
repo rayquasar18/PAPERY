@@ -30,6 +30,13 @@ def mock_oauth_user():
     user.created_at = datetime.now(UTC)
     user.updated_at = datetime.now(UTC)
     user.deleted_at = None
+    # Tier relationship (added in phase 6)
+    mock_tier = MagicMock()
+    mock_tier.name = "Free"
+    mock_tier.slug = "free"
+    user.tier = mock_tier
+    user.tier_id = 1
+    user.stripe_customer_id = None
     return user
 
 

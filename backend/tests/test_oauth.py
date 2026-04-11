@@ -43,6 +43,13 @@ def _make_mock_user(
     user.created_at = datetime.now(UTC)
     user.updated_at = datetime.now(UTC)
     user.deleted_at = None
+    # Tier relationship (added in phase 6)
+    mock_tier = MagicMock()
+    mock_tier.name = "Free"
+    mock_tier.slug = "free"
+    user.tier = mock_tier
+    user.tier_id = 1
+    user.stripe_customer_id = None
     return user
 
 
@@ -451,9 +458,15 @@ class TestOAuthLoginOrRegister:
         mock_new_user.display_name = None  # Will be set from user_info.name
         mock_new_user.is_active = True
 
+        # Mock free tier for tier assignment during registration
+        mock_free_tier = MagicMock()
+        mock_free_tier.id = 1
+        mock_free_tier.slug = "free"
+
         with (
             patch("app.services.auth_service.OAuthAccountRepository") as MockOAuthRepo,
             patch("app.services.auth_service.UserRepository") as MockUserRepo,
+            patch("app.services.auth_service.TierRepository") as MockTierRepo,
         ):
             mock_oauth_repo = MagicMock()
             mock_oauth_repo.get = AsyncMock(return_value=None)  # No existing OAuth
@@ -467,6 +480,10 @@ class TestOAuthLoginOrRegister:
             mock_user_repo.create_user = AsyncMock(return_value=mock_new_user)
             mock_user_repo.update = AsyncMock(return_value=mock_new_user)
             MockUserRepo.return_value = mock_user_repo
+
+            mock_tier_repo = MagicMock()
+            mock_tier_repo.get = AsyncMock(return_value=mock_free_tier)
+            MockTierRepo.return_value = mock_tier_repo
 
             user = await oauth_login_or_register(mock_db_session, user_info)
 

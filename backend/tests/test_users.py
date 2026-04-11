@@ -29,6 +29,13 @@ def mock_user_with_oauth():
     user.updated_at = datetime.now(UTC)
     user.deleted_at = None
     user.oauth_accounts = []
+    # Tier relationship (added in phase 6)
+    mock_tier = MagicMock()
+    mock_tier.name = "Free"
+    mock_tier.slug = "free"
+    user.tier = mock_tier
+    user.tier_id = 1
+    user.stripe_customer_id = None
     return user
 
 
@@ -48,6 +55,13 @@ def mock_oauth_user():
     user.created_at = datetime.now(UTC)
     user.updated_at = datetime.now(UTC)
     user.deleted_at = None
+    # Tier relationship (added in phase 6)
+    mock_tier = MagicMock()
+    mock_tier.name = "Free"
+    mock_tier.slug = "free"
+    user.tier = mock_tier
+    user.tier_id = 1
+    user.stripe_customer_id = None
 
     oauth_account = MagicMock()
     oauth_account.provider = "google"
@@ -94,7 +108,7 @@ class TestGetProfile:
         data = response.json()
         assert data["email"] == "profile@example.com"
         assert data["display_name"] == "Test User"
-        assert data["tier_name"] == "free"
+        assert data["tier_name"] == "Free"
         assert data["has_password"] is True
         assert data["oauth_providers"] == []
         assert "uuid" in data
@@ -201,7 +215,7 @@ class TestUpdateProfile:
         assert response.status_code == 200
         data = response.json()
         assert "uuid" in data
-        assert data["tier_name"] == "free"
+        assert data["tier_name"] == "Free"
 
     async def test_update_display_name_too_short(self, async_client: AsyncClient, mock_user_with_oauth):
         """display_name shorter than 2 chars returns 422."""
