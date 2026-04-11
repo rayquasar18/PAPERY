@@ -2,6 +2,7 @@
 
 from app.infra.minio.client import (
     client,
+    delete_file,
     init,
     presigned_get_url,
     presigned_put_url,
@@ -11,6 +12,7 @@ from app.infra.minio.client import (
 
 __all__ = [
     "client",
+    "delete_file",
     "init",
     "presigned_get_url",
     "presigned_put_url",
