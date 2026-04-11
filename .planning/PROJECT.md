@@ -21,7 +21,7 @@ Users can work with any document intelligently — ask questions, get accurate c
 ### Active
 
 - [x] Full authentication system (register, login, logout, email verification, password reset, OAuth) — Validated in Phase 3 (core flows) + Phase 4 (OAuth, password management)
-- [ ] User tier system with role-based access control (admin, regular users, tier-based permissions)
+- [ ] User tier system with role-based access control (admin, regular users, tier-based permissions) — Validated in Phase 6: Tier System & Permissions
 - [ ] Admin panel for managing users, tiers, rate limits, and system configuration
 - [ ] Project system (CRUD, ACL-based access control per resource)
 - [ ] Frontend infrastructure with best practices (Next.js 15, App Router, i18n, Zustand, Zod validation)
