@@ -97,6 +97,7 @@ class TestRegisterRoute:
                 return_value=_make_token_payload(mock_user.uuid, token_type="refresh", family="fam-1"),
             ),
             patch("app.api.v1.auth.register_token_in_family", new_callable=AsyncMock),
+            patch("app.api.v1.auth.track_user_family", new_callable=AsyncMock),
         ):
             response = await async_client.post(
                 "/api/v1/auth/register",
@@ -164,6 +165,7 @@ class TestLoginRoute:
                 return_value=_make_token_payload(mock_user.uuid, token_type="refresh", family="fam-1"),
             ),
             patch("app.api.v1.auth.register_token_in_family", new_callable=AsyncMock),
+            patch("app.api.v1.auth.track_user_family", new_callable=AsyncMock),
         ):
             response = await async_client.post(
                 "/api/v1/auth/login",
