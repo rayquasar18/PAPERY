@@ -10,17 +10,26 @@ Usage:
 
 from __future__ import annotations
 
+import importlib
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestError
-from app.infra.minio import client as minio_client
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserProfileRead, UserProfileUpdate
 
 logger = logging.getLogger(__name__)
+
+# Import the minio client module by string to avoid name collision with the
+# module-level ``client`` singleton exported from ``app.infra.minio.__init__``.
+_minio_client_module = importlib.import_module("app.infra.minio.client")
+
+
+def _get_presigned_url(object_name: str) -> str:
+    """Thin wrapper around minio presigned_get_url — patchable in tests."""
+    return _minio_client_module.presigned_get_url(object_name)
 
 
 class UserService:
@@ -55,7 +64,7 @@ class UserService:
         avatar_presigned: str | None = None
         if user_with_oauth.avatar_url:
             try:
-                avatar_presigned = minio_client.presigned_get_url(user_with_oauth.avatar_url)
+                avatar_presigned = _get_presigned_url(user_with_oauth.avatar_url)
             except Exception:
                 logger.warning(
                     "Failed to generate presigned URL for avatar: %s",
