@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after Phase 4 completion — Authentication advanced (Google/GitHub OAuth, password reset via email, change/set password, session invalidation)*
+*Last updated: 2026-04-11 after Phase 5 completion — User Profile & Account Management (view/edit profile, avatar upload with Pillow resize, account deletion with soft delete, shared cookie utilities)*
