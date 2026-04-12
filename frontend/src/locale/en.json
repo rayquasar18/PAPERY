@@ -1,0 +1,144 @@
+{
+  "Common": {
+    "appName": "PAPERY",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "Navigation": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "settings": "Settings",
+    "skipToMain": "Skip to main content"
+  },
+  "Auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your account",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "Enter your email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "submitButton": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up",
+      "orContinueWith": "Or continue with",
+      "googleButton": "Continue with Google",
+      "githubButton": "Continue with GitHub"
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "Get started with PAPERY",
+      "nameLabel": "Full name",
+      "namePlaceholder": "Enter your name",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "Enter your email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Create a password",
+      "confirmPasswordLabel": "Confirm password",
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "submitButton": "Create account",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "termsNotice": "By creating an account, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
+      "orContinueWith": "Or continue with",
+      "googleButton": "Continue with Google",
+      "githubButton": "Continue with GitHub"
+    },
+    "verification": {
+      "title": "Check your email",
+      "subtitle": "We sent a verification link to {email}",
+      "body": "We sent a verification link to {email}. Click the link to activate your account.",
+      "resendButton": "Resend verification email",
+      "resendSuccess": "Verification email sent",
+      "backToLogin": "Back to sign in"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email address and we'll send you a reset link.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "Enter your email",
+      "submitButton": "Send reset link",
+      "backToLogin": "Back to sign in",
+      "successTitle": "Check your email",
+      "successMessage": "We sent a password reset link to {email}"
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "subtitle": "Enter your new password below",
+      "passwordLabel": "New password",
+      "passwordPlaceholder": "Enter new password",
+      "confirmPasswordLabel": "Confirm new password",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "submitButton": "Reset password",
+      "successTitle": "Password reset successful",
+      "successMessage": "You can now sign in with your new password"
+    },
+    "errors": {
+      "invalidEmail": "Please enter a valid email address",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "passwordWeak": "Password must be at least 8 characters with uppercase, lowercase, and number.",
+      "invalidCredentials": "Invalid email or password",
+      "emailAlreadyExists": "An account with this email already exists",
+      "emailNotVerified": "Please verify your email before signing in",
+      "serverError": "Something went wrong. Please try again.",
+      "networkError": "Unable to connect to the server. Check your internet connection.",
+      "tokenExpired": "Your session has expired. Please sign in again.",
+      "resetLinkExpired": "This reset link has expired. Please request a new one.",
+      "generic": "Something went wrong. Please try again.",
+      "validation": "Please fix the errors below.",
+      "forbidden": "You don't have permission to access this resource.",
+      "notFound": "Page not found.",
+      "nameTooShort": "Name must be between 2 and 50 characters."
+    }
+  },
+  "Theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "Language": {
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "switchLabel": "Language"
+  },
+  "Metadata": {
+    "title": "PAPERY — Document Intelligence Platform",
+    "description": "AI-powered document intelligence for research, Q&A, and collaboration"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "emptyState": {
+      "title": "No projects yet",
+      "body": "Create your first project to start organizing your documents.",
+      "cta": "Create project"
+    }
+  },
+  "Chat": {
+    "placeholder": {
+      "title": "AI Assistant",
+      "body": "AI-powered chat will be available in a future update."
+    }
+  },
+  "Toast": {
+    "loginSuccess": "Welcome back!",
+    "registerSuccess": "Account created! Check your email to verify.",
+    "logout": "You have been signed out.",
+    "passwordResetSent": "Reset link sent. Check your email.",
+    "passwordChanged": "Password updated successfully."
+  }
+}

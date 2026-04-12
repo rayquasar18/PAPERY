@@ -1,0 +1,144 @@
+{
+  "Common": {
+    "appName": "PAPERY",
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "submit": "Gửi",
+    "close": "Đóng",
+    "edit": "Chỉnh sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "settings": "Cài đặt"
+  },
+  "Navigation": {
+    "dashboard": "Bảng điều khiển",
+    "projects": "Dự án",
+    "settings": "Cài đặt",
+    "skipToMain": "Chuyển đến nội dung chính"
+  },
+  "Auth": {
+    "login": {
+      "title": "Chào mừng trở lại",
+      "subtitle": "Đăng nhập vào tài khoản của bạn",
+      "emailLabel": "Địa chỉ email",
+      "emailPlaceholder": "Nhập email của bạn",
+      "passwordLabel": "Mật khẩu",
+      "passwordPlaceholder": "Nhập mật khẩu",
+      "submitButton": "Đăng nhập",
+      "forgotPassword": "Quên mật khẩu?",
+      "noAccount": "Chưa có tài khoản?",
+      "signUpLink": "Đăng ký",
+      "orContinueWith": "Hoặc tiếp tục với",
+      "googleButton": "Tiếp tục với Google",
+      "githubButton": "Tiếp tục với GitHub"
+    },
+    "register": {
+      "title": "Tạo tài khoản",
+      "subtitle": "Bắt đầu với PAPERY",
+      "nameLabel": "Họ và tên",
+      "namePlaceholder": "Nhập tên của bạn",
+      "emailLabel": "Địa chỉ email",
+      "emailPlaceholder": "Nhập email của bạn",
+      "passwordLabel": "Mật khẩu",
+      "passwordPlaceholder": "Tạo mật khẩu",
+      "confirmPasswordLabel": "Xác nhận mật khẩu",
+      "confirmPasswordPlaceholder": "Xác nhận mật khẩu của bạn",
+      "submitButton": "Tạo tài khoản",
+      "hasAccount": "Đã có tài khoản?",
+      "signInLink": "Đăng nhập",
+      "termsNotice": "Bằng cách tạo tài khoản, bạn đồng ý với <terms>Điều khoản dịch vụ</terms> và <privacy>Chính sách quyền riêng tư</privacy> của chúng tôi.",
+      "orContinueWith": "Hoặc tiếp tục với",
+      "googleButton": "Tiếp tục với Google",
+      "githubButton": "Tiếp tục với GitHub"
+    },
+    "verification": {
+      "title": "Kiểm tra email của bạn",
+      "subtitle": "Chúng tôi đã gửi liên kết xác minh đến {email}",
+      "body": "Chúng tôi đã gửi liên kết xác minh đến {email}. Nhấp vào liên kết để kích hoạt tài khoản của bạn.",
+      "resendButton": "Gửi lại email xác minh",
+      "resendSuccess": "Email xác minh đã được gửi",
+      "backToLogin": "Quay lại đăng nhập"
+    },
+    "forgotPassword": {
+      "title": "Đặt lại mật khẩu",
+      "subtitle": "Nhập địa chỉ email của bạn và chúng tôi sẽ gửi liên kết đặt lại.",
+      "emailLabel": "Địa chỉ email",
+      "emailPlaceholder": "Nhập email của bạn",
+      "submitButton": "Gửi liên kết đặt lại",
+      "backToLogin": "Quay lại đăng nhập",
+      "successTitle": "Kiểm tra email của bạn",
+      "successMessage": "Chúng tôi đã gửi liên kết đặt lại mật khẩu đến {email}"
+    },
+    "resetPassword": {
+      "title": "Đặt mật khẩu mới",
+      "subtitle": "Nhập mật khẩu mới của bạn bên dưới",
+      "passwordLabel": "Mật khẩu mới",
+      "passwordPlaceholder": "Nhập mật khẩu mới",
+      "confirmPasswordLabel": "Xác nhận mật khẩu mới",
+      "confirmPasswordPlaceholder": "Xác nhận mật khẩu mới",
+      "submitButton": "Đặt lại mật khẩu",
+      "successTitle": "Đặt lại mật khẩu thành công",
+      "successMessage": "Bạn có thể đăng nhập bằng mật khẩu mới"
+    },
+    "errors": {
+      "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ",
+      "passwordTooShort": "Mật khẩu phải có ít nhất 8 ký tự",
+      "passwordMismatch": "Mật khẩu không khớp",
+      "passwordWeak": "Mật khẩu phải có ít nhất 8 ký tự với chữ hoa, chữ thường và số.",
+      "invalidCredentials": "Email hoặc mật khẩu không hợp lệ",
+      "emailAlreadyExists": "Tài khoản với email này đã tồn tại",
+      "emailNotVerified": "Vui lòng xác minh email trước khi đăng nhập",
+      "serverError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "networkError": "Không thể kết nối đến máy chủ. Kiểm tra kết nối internet.",
+      "tokenExpired": "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+      "resetLinkExpired": "Liên kết đặt lại này đã hết hạn. Vui lòng yêu cầu liên kết mới.",
+      "generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "validation": "Vui lòng sửa các lỗi bên dưới.",
+      "forbidden": "Bạn không có quyền truy cập tài nguyên này.",
+      "notFound": "Không tìm thấy trang.",
+      "nameTooShort": "Tên phải từ 2 đến 50 ký tự."
+    }
+  },
+  "Theme": {
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống",
+    "toggle": "Chuyển giao diện"
+  },
+  "Language": {
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "switchLabel": "Ngôn ngữ"
+  },
+  "Metadata": {
+    "title": "PAPERY — Nền tảng Trí tuệ Tài liệu",
+    "description": "Nền tảng trí tuệ tài liệu AI cho nghiên cứu, hỏi đáp và cộng tác"
+  },
+  "Dashboard": {
+    "title": "Bảng điều khiển",
+    "emptyState": {
+      "title": "Chưa có dự án nào",
+      "body": "Tạo dự án đầu tiên để bắt đầu tổ chức tài liệu của bạn.",
+      "cta": "Tạo dự án"
+    }
+  },
+  "Chat": {
+    "placeholder": {
+      "title": "Trợ lý AI",
+      "body": "Chat AI sẽ có trong bản cập nhật tiếp theo."
+    }
+  },
+  "Toast": {
+    "loginSuccess": "Chào mừng trở lại!",
+    "registerSuccess": "Tài khoản đã tạo! Kiểm tra email để xác minh.",
+    "logout": "Bạn đã đăng xuất.",
+    "passwordResetSent": "Liên kết đặt lại đã gửi. Kiểm tra email.",
+    "passwordChanged": "Mật khẩu đã được cập nhật."
+  }
+}
