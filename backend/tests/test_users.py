@@ -467,8 +467,8 @@ class TestDeleteAccount:
 
         assert response.status_code == 200
         assert response.json()["message"] == "Account deleted successfully"
-        # Verify is_active was set to False (core USER-04 requirement)
-        assert mock_user_with_oauth.is_active is False
+        # Verify status was set to "deactivated" (core USER-04 requirement)
+        assert mock_user_with_oauth.status == "deactivated"
 
     async def test_delete_account_wrong_password(
         self, async_client: AsyncClient, mock_user_with_oauth

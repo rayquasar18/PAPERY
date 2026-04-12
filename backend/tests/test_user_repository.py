@@ -204,7 +204,7 @@ class TestCreateUser:
         user = await repo.create_user(
             email="new@example.com",
             hashed_password="$2b$12$hashed",
-            is_active=True,
+            status="active",
             is_verified=False,
             is_superuser=False,
         )
