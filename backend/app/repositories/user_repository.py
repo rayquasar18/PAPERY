@@ -38,7 +38,7 @@ class UserRepository(BaseRepository[User]):
         *,
         email: str,
         hashed_password: str | None,
-        is_active: bool = True,
+        status: str = "active",
         is_verified: bool = False,
         is_superuser: bool = False,
         tier_id: int | None = None,
@@ -51,7 +51,7 @@ class UserRepository(BaseRepository[User]):
         user = User(
             email=email.lower(),
             hashed_password=hashed_password,
-            is_active=is_active,
+            status=status,
             is_verified=is_verified,
             is_superuser=is_superuser,
             tier_id=tier_id,

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.session import get_session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token, is_token_blacklisted
-from app.models.user import User
+from app.models.user import User, UserStatus
 from app.repositories.user_repository import UserRepository
 from app.services.tier_service import TierService
 from app.services.usage_service import UsageService
@@ -69,6 +69,8 @@ async def get_current_active_user(
         ForbiddenError: If the user account is deactivated.
     """
     if not user.is_active:
+        if user.status == UserStatus.BANNED.value:
+            raise ForbiddenError(detail="Account has been banned", error_code="ACCOUNT_BANNED")
         raise ForbiddenError(detail="Account is deactivated", error_code="ACCOUNT_INACTIVE")
     return user
 

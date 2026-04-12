@@ -2,10 +2,24 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from sqlalchemy import BigInteger, Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+
+
+class UserStatus(str, Enum):
+    """User account status — stored as String(20) in the database.
+
+    Using a Python enum with string values (not a PostgreSQL native ENUM)
+    to avoid ALTER TYPE complications during production migrations.
+    """
+
+    ACTIVE = "active"
+    DEACTIVATED = "deactivated"
+    BANNED = "banned"
 
 
 class User(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -17,9 +31,20 @@ class User(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default=UserStatus.ACTIVE.value,
+        server_default="active",
+        nullable=False,
+        index=True,
+    )
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+
+    @property
+    def is_active(self) -> bool:
+        """Backward-compatible check — True only when status is 'active'."""
+        return self.status == UserStatus.ACTIVE.value
 
     # Tier subscription
     tier_id: Mapped[int | None] = mapped_column(

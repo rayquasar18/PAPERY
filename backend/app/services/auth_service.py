@@ -40,7 +40,7 @@ from app.core.security import (
     register_token_in_family,
     verify_password,
 )
-from app.models.user import User
+from app.models.user import User, UserStatus
 from app.repositories.oauth_account_repository import OAuthAccountRepository
 from app.repositories.tier_repository import TierRepository
 from app.repositories.user_repository import UserRepository
@@ -112,7 +112,7 @@ class AuthService:
         return await self._user_repo.create_user(
             email=email,
             hashed_password=hash_password(password),
-            is_active=True,
+            status=UserStatus.ACTIVE.value,
             is_verified=False,
             is_superuser=False,
             tier_id=free_tier_id,
@@ -394,7 +394,7 @@ class AuthService:
         await self._user_repo.create_user(
             email=admin_email,
             hashed_password=hash_password(admin_password),
-            is_active=True,
+            status=UserStatus.ACTIVE.value,
             is_verified=True,
             is_superuser=True,
             tier_id=free_tier_id,
@@ -470,7 +470,7 @@ class AuthService:
         new_user = await self._user_repo.create_user(
             email=user_info.email.lower(),
             hashed_password=None,  # OAuth-only — no password
-            is_active=True,
+            status=UserStatus.ACTIVE.value,
             is_verified=True,  # Provider guarantees email ownership
             is_superuser=False,
             tier_id=free_tier_id,

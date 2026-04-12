@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestError, UnauthorizedError
 from app.core.security import invalidate_all_user_sessions, verify_password
-from app.models.user import User
+from app.models.user import User, UserStatus
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import DeleteAccountRequest, UserProfileRead, UserProfileUpdate
 
@@ -234,7 +234,7 @@ class UserService:
                 raise BadRequestError(detail="Email does not match account email")
 
         # 2. Deactivate account
-        user.is_active = False
+        user.status = UserStatus.DEACTIVATED.value
         await self._user_repo.soft_delete(user)  # Sets deleted_at + commits
 
         # 3. Invalidate all sessions in Redis
