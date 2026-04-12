@@ -2,7 +2,7 @@
 
 import { Globe } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { usePathname, useRouter } from '@/i18n/navigation';
+import { usePathname, useRouter } from '@/lib/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { routing } from '@/i18n/routing';
+import { routing } from '@/lib/i18n/routing';
 
 // Supported locales with display names (D-21)
 const LOCALE_LABELS: Record<string, string> = {

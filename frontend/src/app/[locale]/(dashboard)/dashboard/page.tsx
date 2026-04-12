@@ -4,7 +4,7 @@ import { hasLocale } from 'next-intl';
 import { FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { routing } from '@/i18n/routing';
+import { routing } from '@/lib/i18n/routing';
 
 type Props = {
   params: Promise<{ locale: string }>;

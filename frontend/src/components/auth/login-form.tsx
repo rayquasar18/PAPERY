@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
+import { Link } from '@/lib/i18n/navigation';
 import {
   Form,
   FormControl,
@@ -18,8 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
-import { loginSchema, type LoginInput } from '@/lib/schemas/auth';
-import { useAuth } from '@/lib/hooks/use-auth';
+import { loginSchema, type LoginInput } from '@/schemas/auth';
+import { useAuth } from '@/hooks/use-auth';
 
 /**
  * Inner form that reads useSearchParams — must be inside a Suspense boundary.

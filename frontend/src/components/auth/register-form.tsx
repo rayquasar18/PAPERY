@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
+import { Link } from '@/lib/i18n/navigation';
 import {
   Form,
   FormControl,
@@ -19,8 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
 import { PasswordStrength } from '@/components/auth/password-strength';
-import { registerSchema, type RegisterInput } from '@/lib/schemas/auth';
-import { useAuth } from '@/lib/hooks/use-auth';
+import { registerSchema, type RegisterInput } from '@/schemas/auth';
+import { useAuth } from '@/hooks/use-auth';
 
 /**
  * Registration form — RHF + Zod, onBlur validation (D-10).

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from '@/i18n/navigation';
+import { Link } from '@/lib/i18n/navigation';
 import {
   Form,
   FormControl,
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { forgotPasswordSchema, type ForgotPasswordInput } from '@/lib/schemas/auth';
+import { forgotPasswordSchema, type ForgotPasswordInput } from '@/schemas/auth';
 import { authApi } from '@/lib/api/auth';
 
 /**

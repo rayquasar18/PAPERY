@@ -5,7 +5,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { TopBar } from '@/components/layout/top-bar';
 import { ChatPanel } from '@/components/layout/chat-panel';
-import { useSidebarStore } from '@/lib/stores/sidebar-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode;

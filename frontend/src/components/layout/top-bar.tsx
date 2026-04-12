@@ -16,7 +16,7 @@ import {
 import { ThemeToggle } from './theme-toggle';
 import { LanguageSwitcher } from './language-switcher';
 import { UserMenu } from './user-menu';
-import { useSidebarStore } from '@/lib/stores/sidebar-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 interface TopBarProps {
   /** Optional breadcrumb title for the current page */

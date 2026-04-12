@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useSidebarStore } from '@/lib/stores/sidebar-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 /**
  * ChatPanel — Right-side AI assistant panel.

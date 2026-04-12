@@ -1,6 +1,6 @@
-import { redirect } from '@/i18n/navigation';
+import { redirect } from '@/lib/i18n/navigation';
 import { hasLocale } from 'next-intl';
-import { routing } from '@/i18n/routing';
+import { routing } from '@/lib/i18n/routing';
 
 type Props = {
   params: Promise<{ locale: string }>;

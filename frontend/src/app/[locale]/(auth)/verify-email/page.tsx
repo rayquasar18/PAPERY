@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from '@/i18n/navigation';
+import { Link } from '@/lib/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/lib/api/auth';
 

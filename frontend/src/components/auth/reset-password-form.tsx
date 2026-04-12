@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from '@/i18n/navigation';
+import { useRouter } from '@/lib/i18n/navigation';
 import {
   Form,
   FormControl,
@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PasswordStrength } from '@/components/auth/password-strength';
-import { resetPasswordSchema, type ResetPasswordInput } from '@/lib/schemas/auth';
+import { resetPasswordSchema, type ResetPasswordInput } from '@/schemas/auth';
 import { authApi } from '@/lib/api/auth';
 
 /** Inner component that reads useSearchParams — must be inside Suspense. */

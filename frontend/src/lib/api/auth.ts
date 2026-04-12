@@ -1,7 +1,7 @@
 import apiClient from './client';
 import type { z } from 'zod';
-import type { loginSchema, registerSchema } from '@/lib/schemas/auth';
-import type { AuthResponse, MessageResponse, UserPublicRead } from '@/lib/types/api';
+import type { loginSchema, registerSchema } from '@/schemas/auth';
+import type { AuthResponse, MessageResponse, UserPublicRead } from '@/types/api';
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8000';

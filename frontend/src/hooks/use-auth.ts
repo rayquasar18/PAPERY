@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authApi } from '@/lib/api/auth';
 import { QUERY_KEYS } from '@/lib/api/query-client';
-import { useRouter } from '@/i18n/navigation';
+import { useRouter } from '@/lib/i18n/navigation';
 
 /**
  * Central auth hook — wraps TanStack Query for user state and auth mutations.

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { hasLocale } from 'next-intl';
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';
-import { routing } from '@/i18n/routing';
+import { routing } from '@/lib/i18n/routing';
 
 type Props = {
   params: Promise<{ locale: string }>;

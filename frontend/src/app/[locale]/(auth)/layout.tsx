@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { setRequestLocale } from 'next-intl/server';
 import { hasLocale } from 'next-intl';
 import { AuthBranding } from '@/components/auth/auth-branding';
-import { routing } from '@/i18n/routing';
+import { routing } from '@/lib/i18n/routing';
 
 type Props = {
   children: ReactNode;
