@@ -75,7 +75,9 @@ apiClient.interceptors.response.use(
         processQueue(refreshError as AxiosError);
         // Redirect to login when refresh fails (e.g. refresh token expired)
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          // Extract current locale from URL path (e.g., /en/dashboard -> en)
+          const locale = window.location.pathname.split('/')[1] || 'en';
+          window.location.href = `/${locale}/login`;
         }
         return Promise.reject(refreshError);
       } finally {
