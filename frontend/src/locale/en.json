@@ -23,6 +23,10 @@
     "skipToMain": "Skip to main content"
   },
   "Auth": {
+    "branding": {
+      "tagline": "Intelligent Document Workspace",
+      "subtitle": "Ask questions, get cited answers, transform your documents with AI."
+    },
     "login": {
       "title": "Welcome back",
       "subtitle": "Sign in to your account",

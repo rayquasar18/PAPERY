@@ -23,6 +23,10 @@
     "skipToMain": "Chuyển đến nội dung chính"
   },
   "Auth": {
+    "branding": {
+      "tagline": "Không gian Tài liệu Thông minh",
+      "subtitle": "Đặt câu hỏi, nhận câu trả lời có trích dẫn, biến đổi tài liệu với AI."
+    },
     "login": {
       "title": "Chào mừng trở lại",
       "subtitle": "Đăng nhập vào tài khoản của bạn",
