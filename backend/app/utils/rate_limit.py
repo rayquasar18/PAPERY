@@ -20,6 +20,9 @@ import logging
 
 from app.core.exceptions import RateLimitedError
 from app.infra.redis import client as redis_client
+from app.utils.rate_limit_rule_cache import (
+    get_cached_rate_limit_rule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +64,54 @@ async def check_rate_limit(
             error_code="RATE_LIMITED",
             headers={"Retry-After": str(ttl)},
         )
+
+
+async def check_rate_limit_dynamic(
+    key: str,
+    tier_id: int | None,
+    endpoint: str,
+    fallback_max_requests: int = 60,
+    fallback_window_seconds: int = 60,
+) -> None:
+    """Enforce a rate limit with dynamic DB-backed rules.
+
+    Lookup priority (D-17):
+    1. Tier-specific rule from cache/DB
+    2. Default rule (tier_id=NULL) from cache/DB
+    3. Hardcoded fallback values
+
+    This extends the existing check_rate_limit() with configurable,
+    admin-managed rules. The original function is preserved for cases
+    where hardcoded limits are intentional (e.g., anti-abuse).
+
+    Args:
+        key: Redis key — should include endpoint + caller identity.
+        tier_id: The user's tier ID (from user.tier_id). None for unauthenticated.
+        endpoint: Endpoint pattern to match rules (e.g., "auth:login").
+        fallback_max_requests: Hardcoded fallback if no DB rule exists.
+        fallback_window_seconds: Hardcoded fallback window.
+    """
+    max_requests = fallback_max_requests
+    window_seconds = fallback_window_seconds
+
+    # Try tier-specific rule from cache
+    if tier_id is not None:
+        cached = await get_cached_rate_limit_rule(tier_id, endpoint)
+        if cached is not None:
+            max_requests = cached["max_requests"]
+            window_seconds = cached["window_seconds"]
+        else:
+            # Try default rule from cache
+            cached_default = await get_cached_rate_limit_rule(None, endpoint)
+            if cached_default is not None:
+                max_requests = cached_default["max_requests"]
+                window_seconds = cached_default["window_seconds"]
+    else:
+        # No tier — try default rule
+        cached_default = await get_cached_rate_limit_rule(None, endpoint)
+        if cached_default is not None:
+            max_requests = cached_default["max_requests"]
+            window_seconds = cached_default["window_seconds"]
+
+    # Delegate to existing check_rate_limit with resolved values
+    await check_rate_limit(key, max_requests, window_seconds)
