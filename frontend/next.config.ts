@@ -1,7 +1,12 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactCompiler: true,
+  images: {
+    remotePatterns: [
+      // MinIO/S3 backend URLs will be added here when configured
+    ],
+  },
 };
 
 export default nextConfig;
