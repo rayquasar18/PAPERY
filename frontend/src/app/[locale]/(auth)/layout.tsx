@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { setRequestLocale } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
 import { AuthBranding } from '@/components/auth/auth-branding';
+import { routing } from '@/i18n/routing';
 
 type Props = {
   children: ReactNode;
@@ -14,7 +16,8 @@ type Props = {
  * Mobile:  Form only, full width, centered
  */
 export default async function AuthLayout({ children, params }: Props) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = hasLocale(routing.locales, rawLocale) ? rawLocale : routing.defaultLocale;
   setRequestLocale(locale);
 
   return (

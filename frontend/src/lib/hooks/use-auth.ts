@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { authApi } from '@/lib/api/auth';
 import { QUERY_KEYS } from '@/lib/api/query-client';
@@ -10,11 +9,14 @@ import { useRouter } from '@/i18n/navigation';
 /**
  * Central auth hook — wraps TanStack Query for user state and auth mutations.
  * Uses HttpOnly cookie auth — no token handling in JS.
+ *
+ * Note: useSearchParams is intentionally NOT used here to avoid Suspense
+ * boundary requirements at the hook level. Callers handle redirect-back
+ * by passing the target URL directly to login().
  */
 export function useAuth() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Current user — fetched once on mount, cached for 5min
   const {
@@ -30,13 +32,14 @@ export function useAuth() {
 
   // Login mutation — sets user in cache, redirects to dashboard or redirect-back URL
   const loginMutation = useMutation({
-    mutationFn: authApi.login,
-    onSuccess: (data) => {
+    mutationFn: (args: { data: Parameters<typeof authApi.login>[0]; redirectTo?: string }) =>
+      authApi.login(args.data),
+    onSuccess: (data, variables) => {
       queryClient.setQueryData(QUERY_KEYS.user, data.user);
       toast.success(data.message || 'Welcome back!');
-      // D-11: redirect-back pattern — return to original URL if present
-      const redirectTo = searchParams.get('redirect') || '/dashboard';
-      router.push(redirectTo as Parameters<typeof router.push>[0]);
+      // D-11: redirect-back pattern — caller provides redirect URL
+      const target = variables.redirectTo || '/dashboard';
+      router.push(target as Parameters<typeof router.push>[0]);
     },
     onError: (err: unknown) => {
       const message =

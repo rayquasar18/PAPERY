@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams } from 'next/navigation';
@@ -22,11 +22,8 @@ import { PasswordStrength } from '@/components/auth/password-strength';
 import { resetPasswordSchema, type ResetPasswordInput } from '@/lib/schemas/auth';
 import { authApi } from '@/lib/api/auth';
 
-/**
- * Reset password form — reads ?token= from URL, submits new password.
- * On success: toast + redirect to login.
- */
-export function ResetPasswordForm() {
+/** Inner component that reads useSearchParams — must be inside Suspense. */
+function ResetPasswordFormInner() {
   const t = useTranslations('Auth.resetPassword');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,11 +99,7 @@ export function ResetPasswordForm() {
                       onClick={() => setShowPassword((v) => !v)}
                       tabIndex={-1}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </FormControl>
@@ -140,11 +133,7 @@ export function ResetPasswordForm() {
                       onClick={() => setShowConfirm((v) => !v)}
                       tabIndex={-1}
                     >
-                      {showConfirm ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </FormControl>
@@ -153,11 +142,7 @@ export function ResetPasswordForm() {
             )}
           />
 
-          <Button
-            type="submit"
-            className="h-11 w-full"
-            disabled={isSubmitting || !token}
-          >
+          <Button type="submit" className="h-11 w-full" disabled={isSubmitting || !token}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -170,5 +155,17 @@ export function ResetPasswordForm() {
         </form>
       </Form>
     </div>
+  );
+}
+
+/**
+ * Reset password form — wrapped in Suspense to satisfy useSearchParams() requirement.
+ * Reads ?token= from URL, submits new password, redirects to login on success.
+ */
+export function ResetPasswordForm() {
+  return (
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted" />}>
+      <ResetPasswordFormInner />
+    </Suspense>
   );
 }

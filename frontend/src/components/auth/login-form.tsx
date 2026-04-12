@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import {
@@ -21,13 +22,13 @@ import { loginSchema, type LoginInput } from '@/lib/schemas/auth';
 import { useAuth } from '@/lib/hooks/use-auth';
 
 /**
- * Login form — React Hook Form + Zod resolver, validation on blur (D-10).
- * Displays email/password fields, forgot-password link, OAuth buttons,
- * and a register link in the footer.
+ * Inner form that reads useSearchParams — must be inside a Suspense boundary.
  */
-export function LoginForm() {
+function LoginFormInner() {
   const t = useTranslations('Auth.login');
   const { login, isLoggingIn } = useAuth();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') ?? undefined;
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginInput>({
@@ -40,7 +41,8 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: LoginInput) {
-    await login(values);
+    // Pass redirect-back URL to login mutation (D-11)
+    await login({ data: values, redirectTo });
   }
 
   return (
@@ -122,11 +124,7 @@ export function LoginForm() {
           />
 
           {/* Submit */}
-          <Button
-            type="submit"
-            className="h-11 w-full"
-            disabled={isLoggingIn}
-          >
+          <Button type="submit" className="h-11 w-full" disabled={isLoggingIn}>
             {isLoggingIn ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -150,5 +148,17 @@ export function LoginForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+/**
+ * Login form — wrapped in Suspense to satisfy useSearchParams() requirement.
+ * Validation on blur (D-10), redirect-back pattern (D-11).
+ */
+export function LoginForm() {
+  return (
+    <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-muted" />}>
+      <LoginFormInner />
+    </Suspense>
   );
 }

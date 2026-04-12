@@ -184,13 +184,13 @@ export function RegisterForm() {
               htmlFor="terms"
               className="text-xs text-muted-foreground leading-relaxed cursor-pointer"
             >
-              {t('termsNotice', {
-                terms: (chunks: React.ReactNode) => (
+              {t.rich('termsNotice', {
+                terms: (chunks) => (
                   <a href="/terms" className="text-primary hover:underline">
                     {chunks}
                   </a>
                 ),
-                privacy: (chunks: React.ReactNode) => (
+                privacy: (chunks) => (
                   <a href="/privacy" className="text-primary hover:underline">
                     {chunks}
                   </a>

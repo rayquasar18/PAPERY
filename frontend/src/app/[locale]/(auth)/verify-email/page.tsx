@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Mail, Loader2 } from 'lucide-react';
@@ -11,12 +11,8 @@ import { authApi } from '@/lib/api/auth';
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
-/**
- * Email verification page.
- * - If ?token= present: auto-calls verifyEmail and shows success/error.
- * - Otherwise: shows "check your email" notice with resend button (60s cooldown).
- */
-export default function VerifyEmailPage() {
+/** Inner component that reads useSearchParams — must be inside Suspense. */
+function VerifyEmailContent() {
   const t = useTranslations('Auth.verification');
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -79,8 +75,16 @@ export default function VerifyEmailPage() {
   if (token && verifyStatus !== 'idle') {
     return (
       <div className="flex flex-col items-center gap-6 text-center">
-        <div className={`rounded-full p-4 ${verifyStatus === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
-          <Mail className={`h-10 w-10 ${verifyStatus === 'success' ? 'text-green-600' : 'text-red-600'}`} />
+        <div
+          className={`rounded-full p-4 ${
+            verifyStatus === 'success' ? 'bg-green-100' : 'bg-red-100'
+          }`}
+        >
+          <Mail
+            className={`h-10 w-10 ${
+              verifyStatus === 'success' ? 'text-green-600' : 'text-red-600'
+            }`}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">
@@ -116,19 +120,15 @@ export default function VerifyEmailPage() {
         </p>
       </div>
 
-      {/* Resend button with cooldown */}
+      {/* Resend button with 60s cooldown */}
       <Button
         variant="outline"
         className="h-11 w-full"
         onClick={handleResend}
         disabled={resending || cooldown > 0 || !email}
       >
-        {resending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : null}
-        {cooldown > 0
-          ? `${t('resendButton')} (${cooldown}s)`
-          : t('resendButton')}
+        {resending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        {cooldown > 0 ? `${t('resendButton')} (${cooldown}s)` : t('resendButton')}
       </Button>
 
       <Link
@@ -138,5 +138,17 @@ export default function VerifyEmailPage() {
         {t('backToLogin')}
       </Link>
     </div>
+  );
+}
+
+/**
+ * Email verification page — wrapped in Suspense for useSearchParams().
+ * Auto-verifies if ?token= present; shows resend UI otherwise.
+ */
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted" />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

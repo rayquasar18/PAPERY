@@ -31,7 +31,9 @@ export function LanguageSwitcher() {
   const pathname = usePathname();
 
   const handleLocaleChange = (nextLocale: string) => {
-    router.replace(pathname, { locale: nextLocale });
+    // Narrow to typed locale before passing to next-intl router
+    const typedLocale = routing.locales.find((l) => l === nextLocale);
+    if (typedLocale) router.replace(pathname, { locale: typedLocale });
   };
 
   return (
