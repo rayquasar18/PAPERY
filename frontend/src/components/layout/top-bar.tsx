@@ -1,19 +1,13 @@
 'use client';
 
 import { MessageSquare } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
+import { useSidebarStore } from '@/stores/sidebar-store';
 import { ThemeToggle } from './theme-toggle';
 import { LanguageSwitcher } from './language-switcher';
-import { ChatPanel } from './chat-panel';
 
 /**
  * TopBar -- Sticky application header adapted from shadcn dashboard-01 site-header.
@@ -22,11 +16,14 @@ import { ChatPanel } from './chat-panel';
  * flex h-(--header-height) shrink-0 items-center gap-2 border-b
  *
  * Left side: SidebarTrigger + Separator + page title
- * Right side: ThemeToggle + LanguageSwitcher + ChatPanel Sheet trigger
+ * Right side: ThemeToggle + LanguageSwitcher + Chat toggle button
  * User avatar is in the sidebar footer only (NavUser component).
+ *
+ * The chat toggle button controls `isChatPanelOpen` in the sidebar store.
+ * The ChatPanel itself is rendered inline in layout-client.tsx (not here).
  */
 export function TopBar() {
-  const tChat = useTranslations('Chat');
+  const { isChatPanelOpen, toggleChatPanel } = useSidebarStore();
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -43,22 +40,16 @@ export function TopBar() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <LanguageSwitcher />
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9"
-                aria-label="Toggle AI chat panel"
-              >
-                <MessageSquare className="size-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
-              <SheetTitle className="sr-only">{tChat('placeholder.title')}</SheetTitle>
-              <ChatPanel />
-            </SheetContent>
-          </Sheet>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('size-9', isChatPanelOpen && 'bg-accent text-accent-foreground')}
+            onClick={toggleChatPanel}
+            aria-label="Toggle AI chat panel"
+            aria-pressed={isChatPanelOpen}
+          >
+            <MessageSquare className="size-4" />
+          </Button>
         </div>
       </div>
     </header>
