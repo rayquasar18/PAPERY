@@ -1,40 +1,28 @@
 'use client';
 
-import { X, Bot } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { useSidebarStore } from '@/stores/sidebar-store';
 
 /**
  * ChatPanel — Right-side AI assistant panel.
  *
+ * Rendered inside a Sheet overlay triggered from the TopBar.
  * v1 placeholder: shows "AI Assistant coming soon" message.
  * Full QuasarFlow integration in a future phase.
  * Uses ScrollArea for content area to support future chat message list.
  */
 export function ChatPanel() {
   const t = useTranslations('Chat');
-  const { toggleChatPanel } = useSidebarStore();
 
   return (
-    <div className="flex h-full flex-col bg-background border-l">
+    <div className="flex h-full flex-col bg-background">
       {/* Panel header */}
-      <div className="flex h-14 items-center justify-between px-4 border-b shrink-0">
+      <div className="flex h-14 items-center px-4 border-b shrink-0">
         <div className="flex items-center gap-2">
           <Bot className="size-4 text-primary" />
           <span className="font-semibold text-sm">{t('placeholder.title')}</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          onClick={toggleChatPanel}
-          aria-label="Close chat panel"
-        >
-          <X className="size-4" />
-        </Button>
       </div>
 
       {/* Scrollable content area */}
