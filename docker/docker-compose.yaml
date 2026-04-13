@@ -79,8 +79,6 @@ services:
       - "8000:8000"
     volumes:
       - ../backend:/app
-    env_file:
-      - ../.env
     depends_on:
       db:
         condition: service_healthy
@@ -88,6 +86,26 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend.dev
+    container_name: papery-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NEXT_PUBLIC_BACKEND_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_VERSION: v1
+      BACKEND_API_URL: http://papery-web:8000
+      API_VERSION: v1
+    depends_on:
+      - web
 
   web-prod:
     build:
