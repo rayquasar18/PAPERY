@@ -6,14 +6,6 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import {
   Sheet,
   SheetContent,
   SheetTitle,
@@ -23,66 +15,51 @@ import { ThemeToggle } from './theme-toggle';
 import { LanguageSwitcher } from './language-switcher';
 import { ChatPanel } from './chat-panel';
 
-interface TopBarProps {
-  /** Optional breadcrumb title for the current page */
-  breadcrumb?: string;
-}
-
 /**
- * TopBar — Sticky application header bar.
+ * TopBar -- Sticky application header adapted from shadcn dashboard-01 site-header.
  *
- * Height: 56px (h-14 / 3.5rem), sticky top-0, z-40.
- * Left: SidebarTrigger + Separator + Breadcrumb
- * Right: ThemeToggle + LanguageSwitcher + ChatPanel Sheet trigger
+ * Uses the exact CSS structure from shadcn site-header:
+ * flex h-(--header-height) shrink-0 items-center gap-2 border-b
  *
- * User menu has moved to the sidebar footer (shadcn dashboard-01 pattern).
+ * Left side: SidebarTrigger + Separator + page title
+ * Right side: ThemeToggle + LanguageSwitcher + ChatPanel Sheet trigger
+ * User avatar is in the sidebar footer only (NavUser component).
  */
-export function TopBar({ breadcrumb }: TopBarProps) {
+export function TopBar() {
   const tChat = useTranslations('Chat');
 
   return (
-    <header className="flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sticky top-0 z-40">
-      {/* Left side: sidebar trigger + breadcrumb */}
-      <div className="flex flex-1 items-center gap-2 min-w-0">
+    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+        {/* Left side: sidebar trigger + separator + page title */}
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">PAPERY</BreadcrumbLink>
-            </BreadcrumbItem>
-            {breadcrumb && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{breadcrumb}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
+        <Separator
+          orientation="vertical"
+          className="mx-2 data-[orientation=vertical]:h-4"
+        />
+        <h1 className="text-base font-medium">Documents</h1>
 
-      {/* Right side: actions */}
-      <div className="flex items-center gap-1">
-        <ThemeToggle />
-        <LanguageSwitcher />
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9"
-              aria-label="Toggle AI chat panel"
-            >
-              <MessageSquare className="size-4" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
-            <SheetTitle className="sr-only">{tChat('placeholder.title')}</SheetTitle>
-            <ChatPanel />
-          </SheetContent>
-        </Sheet>
+        {/* Right side: actions */}
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
+          <LanguageSwitcher />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9"
+                aria-label="Toggle AI chat panel"
+              >
+                <MessageSquare className="size-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
+              <SheetTitle className="sr-only">{tChat('placeholder.title')}</SheetTitle>
+              <ChatPanel />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

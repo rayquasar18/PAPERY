@@ -4,192 +4,170 @@ import {
   LayoutDashboard,
   FolderKanban,
   Settings,
-  User,
-  LogOut,
-  ChevronsUpDown,
+  HelpCircle,
+  FolderPlus,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/lib/i18n/navigation';
+import { NavUser } from '@/components/layout/nav-user';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-// Navigation items for the sidebar
-const navItems = [
-  {
-    key: 'dashboard' as const,
-    icon: LayoutDashboard,
-    href: '/dashboard' as const,
-  },
-  {
-    key: 'projects' as const,
-    icon: FolderKanban,
-    href: '/projects' as const,
-  },
-  {
-    key: 'settings' as const,
-    icon: Settings,
-    href: '/settings' as const,
-  },
-] satisfies Array<{
-  key: string;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-}>;
+import { useAuth } from '@/hooks/use-auth';
 
 /**
- * AppSidebar — Main application navigation sidebar.
+ * AppSidebar -- Main navigation sidebar adapted from shadcn dashboard-01.
  *
- * Uses shadcn/ui Sidebar with collapsible="icon" for responsive behavior:
- * - Desktop: expanded (280px) with labels
- * - Tablet: collapsed to icon-only (56px)
- * - Mobile: Sheet overlay (handled by shadcn/ui internally)
- *
- * Footer contains a DropdownMenu for user actions (profile, settings, sign out)
- * following the shadcn dashboard-01 pattern.
+ * Uses collapsible="offcanvas" with variant="inset" for the shadcn inset layout.
+ * Header: PAPERY logo ("P" square + "PAPERY" text)
+ * Content: Quick Create button + main nav items + secondary nav at bottom
+ * Footer: NavUser component with real user data from auth hook
  */
-export function AppSidebar() {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const t = useTranslations('Navigation');
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  // Main navigation items
+  const navItems = [
+    {
+      key: 'dashboard' as const,
+      icon: LayoutDashboard,
+      href: '/dashboard' as const,
+    },
+    {
+      key: 'projects' as const,
+      icon: FolderKanban,
+      href: '/projects' as const,
+    },
+  ];
+
+  // Secondary navigation at bottom
+  const secondaryItems = [
+    {
+      key: 'settings' as const,
+      icon: Settings,
+      href: '/settings' as const,
+    },
+    {
+      key: 'help' as const,
+      icon: HelpCircle,
+      href: '/help' as const,
+      label: 'Help',
+    },
+  ];
+
+  // Build user data for NavUser from auth state
+  const userData = {
+    name: user?.display_name || 'User',
+    email: user?.email || 'user@example.com',
+    avatar: user?.avatar_url || undefined,
+  };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="offcanvas" {...props}>
       {/* Logo + app name */}
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="lg"
               asChild
-              className="font-semibold"
+              className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link href="/dashboard">
-                {/* Logo mark — simple text icon that collapses gracefully */}
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shrink-0">
+                <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
                   P
                 </div>
-                <span className="text-base font-semibold tracking-tight">PAPERY</span>
+                <span className="text-base font-semibold">PAPERY</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* Navigation items */}
       <SidebarContent>
+        {/* Quick Create + main nav */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t('dashboard').replace('Dashboard', 'Menu')}</SidebarGroupLabel>
-          <SidebarMenu>
-            {navItems.map(({ key, icon: Icon, href }) => {
-              // Determine active state — match current pathname segment
-              const isActive =
-                href === '/dashboard'
-                  ? pathname === '/dashboard' || pathname === '/'
-                  : pathname.startsWith(href);
+          <SidebarGroupContent className="flex flex-col gap-2">
+            <SidebarMenu>
+              <SidebarMenuItem className="flex items-center gap-2">
+                <SidebarMenuButton
+                  tooltip="Quick Create"
+                  className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                >
+                  <FolderPlus />
+                  <span>Quick Create</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <SidebarMenu>
+              {navItems.map(({ key, icon: Icon, href }) => {
+                const isActive =
+                  href === '/dashboard'
+                    ? pathname === '/dashboard' || pathname === '/'
+                    : pathname.startsWith(href);
 
-              return (
-                <SidebarMenuItem key={key}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={t(key as 'dashboard' | 'projects' | 'settings')}
-                  >
-                    <Link href={href}>
-                      <Icon className="size-4" />
-                      <span>{t(key as 'dashboard' | 'projects' | 'settings')}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
+                return (
+                  <SidebarMenuItem key={key}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={t(key)}
+                    >
+                      <Link href={href}>
+                        <Icon />
+                        <span>{t(key)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Secondary nav at bottom */}
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {secondaryItems.map(({ key, icon: Icon, href, label }) => {
+                const isActive = pathname.startsWith(href);
+                // Use translation for known keys, fallback to label
+                const displayLabel =
+                  key === 'settings' || key === 'help'
+                    ? key === 'help'
+                      ? (label ?? key)
+                      : t(key)
+                    : key;
+
+                return (
+                  <SidebarMenuItem key={key}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={href}>
+                        <Icon />
+                        <span>{displayLabel}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      {/* User footer with dropdown menu — shadcn dashboard-01 pattern */}
+      {/* User footer */}
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="size-8 rounded-lg shrink-0">
-                    <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs">
-                      U
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
-                    <span className="truncate font-medium">User</span>
-                    <span className="truncate text-xs text-muted-foreground">user@example.com</span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="size-8 rounded-lg">
-                      <AvatarFallback className="rounded-lg bg-muted text-muted-foreground text-xs">
-                        U
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">User</span>
-                      <span className="truncate text-xs text-muted-foreground">user@example.com</span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <User className="mr-2 size-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 size-4" />
-                    Settings
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 size-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <NavUser user={userData} />
       </SidebarFooter>
-
-      {/* Rail for the toggle handle */}
-      <SidebarRail />
     </Sidebar>
   );
 }
