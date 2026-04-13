@@ -126,6 +126,32 @@
   },
   "Dashboard": {
     "title": "Dashboard",
+    "subtitle": "Overview of your workspace",
+    "stats": {
+      "totalProjects": "Total Projects",
+      "totalDocuments": "Total Documents",
+      "aiQueries": "AI Queries",
+      "storageUsed": "Storage Used",
+      "noData": "No data yet",
+      "fromLastMonth": "+{count} from last month"
+    },
+    "recentProjects": {
+      "title": "Recent Projects",
+      "emptyTitle": "No projects yet",
+      "emptyBody": "Create your first project to get started.",
+      "viewAll": "View all"
+    },
+    "recentActivity": {
+      "title": "Recent Activity",
+      "emptyTitle": "No activity yet",
+      "emptyBody": "Your recent actions will appear here."
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "newProject": "New Project",
+      "uploadDocument": "Upload Document",
+      "startChat": "Start Chat"
+    },
     "emptyState": {
       "title": "No projects yet",
       "body": "Create your first project to start organizing your documents.",

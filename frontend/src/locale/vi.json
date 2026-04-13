@@ -126,6 +126,32 @@
   },
   "Dashboard": {
     "title": "Bảng điều khiển",
+    "subtitle": "Tổng quan không gian làm việc",
+    "stats": {
+      "totalProjects": "Tổng dự án",
+      "totalDocuments": "Tổng tài liệu",
+      "aiQueries": "Truy vấn AI",
+      "storageUsed": "Dung lượng đã dùng",
+      "noData": "Chưa có dữ liệu",
+      "fromLastMonth": "+{count} từ tháng trước"
+    },
+    "recentProjects": {
+      "title": "Dự án gần đây",
+      "emptyTitle": "Chưa có dự án nào",
+      "emptyBody": "Tạo dự án đầu tiên để bắt đầu.",
+      "viewAll": "Xem tất cả"
+    },
+    "recentActivity": {
+      "title": "Hoạt động gần đây",
+      "emptyTitle": "Chưa có hoạt động",
+      "emptyBody": "Các hành động gần đây của bạn sẽ hiển thị ở đây."
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "newProject": "Dự án mới",
+      "uploadDocument": "Tải tài liệu",
+      "startChat": "Bắt đầu chat"
+    },
     "emptyState": {
       "title": "Chưa có dự án nào",
       "body": "Tạo dự án đầu tiên để bắt đầu tổ chức tài liệu của bạn.",
