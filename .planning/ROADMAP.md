@@ -203,6 +203,9 @@
 
 ## Phase 8: Project System & ACL
 
+**Status:** 🔄 In progress — 1/4 plans complete (2026-04-27)
+**Plans progress:** 08-01 ✅ Project Core CRUD | 08-02 ⬜ ACL Role Matrix | 08-03 ⬜ Invites & Membership | 08-04 ⬜ Listing & Search
+
 **Goal:** Implement the project system with CRUD, access control lists (ACL), member management, and invite flows.
 
 **Why here:** Projects are the top-level container for all user content (documents, chats, AI results). They depend on auth + tiers (permission checks) and are required before document/AI features in v2. ACL is the reusable permission model for all future resources.

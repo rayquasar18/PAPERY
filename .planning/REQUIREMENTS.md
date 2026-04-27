@@ -46,8 +46,8 @@ Requirements for initial release — SaaS foundation. Each maps to roadmap phase
 
 ### Project System
 
-- [ ] **PROJ-01**: User can create a project (name, description)
-- [ ] **PROJ-02**: User can view, edit, and soft-delete own projects
+- [x] **PROJ-01**: User can create a project (name, description)
+- [x] **PROJ-02**: User can view, edit, and soft-delete own projects
 - [ ] **PROJ-03**: Project has ACL — owner, editor, viewer roles
 - [ ] **PROJ-04**: Owner can invite users to project via invite link or email
 - [ ] **PROJ-05**: Owner can change member roles or remove members
@@ -175,8 +175,8 @@ Complete mapping of all v1 requirements to roadmap phases.
 | ADMIN-04 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
 | ADMIN-05 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
 | ADMIN-06 | Phase 7: Admin Panel (Backend) | ⬜ Not started |
-| PROJ-01 | Phase 8: Project System & ACL | ⬜ Not started |
-| PROJ-02 | Phase 8: Project System & ACL | ⬜ Not started |
+| PROJ-01 | Phase 8: Project System & ACL | ✅ Complete (08-01) |
+| PROJ-02 | Phase 8: Project System & ACL | ✅ Complete (08-01) |
 | PROJ-03 | Phase 8: Project System & ACL | ⬜ Not started |
 | PROJ-04 | Phase 8: Project System & ACL | ⬜ Not started |
 | PROJ-05 | Phase 8: Project System & ACL | ⬜ Not started |
