@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-// Inter font with Vietnamese subset support (D-15, D-21)
 const inter = Inter({
   subsets: ['latin', 'vietnamese'],
   variable: '--font-sans',
+  weight: ['400', '500'],
   display: 'swap',
 });
 

@@ -186,14 +186,14 @@ export function RegisterForm() {
             >
               {t.rich('termsNotice', {
                 terms: (chunks) => (
-                  <a href="/terms" className="text-primary hover:underline">
+                  <Link href="/terms" className="text-primary hover:underline">
                     {chunks}
-                  </a>
+                  </Link>
                 ),
                 privacy: (chunks) => (
-                  <a href="/privacy" className="text-primary hover:underline">
+                  <Link href="/privacy" className="text-primary hover:underline">
                     {chunks}
-                  </a>
+                  </Link>
                 ),
               })}
             </label>

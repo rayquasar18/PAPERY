@@ -132,11 +132,11 @@ const chartConfig = {
   },
   desktop: {
     label: "Desktop",
-    color: "var(--primary)",
+    color: "var(--chart-2)",
   },
   mobile: {
     label: "Mobile",
-    color: "var(--primary)",
+    color: "var(--chart-4)",
   },
 } satisfies ChartConfig
 
@@ -194,14 +194,14 @@ export function ChartAreaInteractive() {
             >
               <SelectValue placeholder="Last 3 months" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
+            <SelectContent className="rounded-[12px]">
+              <SelectItem value="90d" className="rounded-full">
                 Last 3 months
               </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
+              <SelectItem value="30d" className="rounded-full">
                 Last 30 days
               </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
+              <SelectItem value="7d" className="rounded-full">
                 Last 7 days
               </SelectItem>
             </SelectContent>
@@ -214,32 +214,6 @@ export function ChartAreaInteractive() {
           className="aspect-auto h-[250px] w-full"
         >
           <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={1.0}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
@@ -272,16 +246,18 @@ export function ChartAreaInteractive() {
             <Area
               dataKey="mobile"
               type="natural"
-              fill="url(#fillMobile)"
+              fill="var(--color-mobile)"
+              fillOpacity={0.16}
               stroke="var(--color-mobile)"
-              stackId="a"
+              strokeWidth={1.8}
             />
             <Area
               dataKey="desktop"
               type="natural"
-              fill="url(#fillDesktop)"
+              fill="var(--color-desktop)"
+              fillOpacity={0.1}
               stroke="var(--color-desktop)"
-              stackId="a"
+              strokeWidth={2.4}
             />
           </AreaChart>
         </ChartContainer>
