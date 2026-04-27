@@ -6,6 +6,7 @@ and domain exceptions belong in the services layer.
 """
 
 from app.repositories.base import BaseRepository
+from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 
-__all__ = ["BaseRepository", "UserRepository"]
+__all__ = ["BaseRepository", "ProjectRepository", "UserRepository"]
