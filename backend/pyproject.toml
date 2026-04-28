@@ -87,4 +87,7 @@ asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests requiring external services",
+    "contract: marks interface contract tests",
+    "schema: marks DTO/schema boundary tests",
+    "stub: marks deterministic stub provider tests",
 ]
