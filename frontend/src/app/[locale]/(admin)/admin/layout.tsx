@@ -1,7 +1,7 @@
 import { ShieldCheck } from 'lucide-react';
-import { cookies } from 'next/headers';
 import { redirect } from '@/lib/i18n/navigation';
 import { routing } from '@/lib/i18n/routing';
+import { getSessionUser } from '@/lib/auth/get-session-user';
 
 type Props = {
   children: React.ReactNode;
@@ -10,11 +10,17 @@ type Props = {
 
 export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params;
-  const cookieStore = await cookies();
-  const hasAccessToken = Boolean(cookieStore.get('access_token')?.value);
+  const safeLocale = routing.locales.includes(locale as 'en' | 'vi') ? (locale as 'en' | 'vi') : routing.defaultLocale;
+  const user = await getSessionUser();
 
-  if (!hasAccessToken) {
-    redirect({ href: '/login', locale: routing.locales.includes(locale as 'en' | 'vi') ? (locale as 'en' | 'vi') : routing.defaultLocale });
+  if (!user) {
+    redirect({ href: '/login', locale: safeLocale });
+  }
+
+  const sessionUser = user!;
+
+  if (!sessionUser.is_superuser) {
+    redirect({ href: '/dashboard', locale: safeLocale });
   }
 
   return (

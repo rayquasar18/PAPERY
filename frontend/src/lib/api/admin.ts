@@ -18,6 +18,11 @@ export const adminApi = {
     return adminUserSchema.parse(response.data);
   },
 
+  listTiers: async () => {
+    const response = await apiClient.get('/tiers');
+    return response.data.map((item: unknown) => tierSchema.parse(item));
+  },
+
   listRateLimits: async () => {
     const response = await apiClient.get('/admin/rate-limits');
     return response.data.map((item: unknown) => rateLimitRuleSchema.parse(item));
