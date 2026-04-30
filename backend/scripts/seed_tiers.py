@@ -9,7 +9,7 @@ import logging
 
 from sqlalchemy import select
 
-from app.core.db.session import async_session_factory, init, shutdown
+from app.core.db import session as db_session
 from app.models.tier import Tier
 
 logger = logging.getLogger(__name__)
@@ -68,9 +68,12 @@ DEFAULT_TIERS = [
 
 async def seed_tiers() -> None:
     """Insert default tiers if they don't already exist (idempotent)."""
-    await init()
+    await db_session.init()
 
-    async with async_session_factory() as session:
+    if db_session.async_session_factory is None:
+        raise RuntimeError("Database session factory is not initialized")
+
+    async with db_session.async_session_factory() as session:
         for tier_data in DEFAULT_TIERS:
             existing = await session.execute(
                 select(Tier).where(Tier.slug == tier_data["slug"])
@@ -85,7 +88,7 @@ async def seed_tiers() -> None:
 
         await session.commit()
 
-    await shutdown()
+    await db_session.shutdown()
     logger.info("Tier seeding complete")
 
 

@@ -14,9 +14,11 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.session import get_session
-from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import decode_token, is_token_blacklisted
+from app.models.project import ProjectMemberRole
 from app.models.user import User, UserStatus
+from app.repositories.project_member_repository import ProjectMemberRepository
 from app.repositories.user_repository import UserRepository
 from app.services.tier_service import TierService
 from app.services.usage_service import UsageService
@@ -137,3 +139,57 @@ class CheckUsageLimit:
         usage_service = UsageService(db)
         await usage_service.enforce_limit(user, self.metric)
         return user
+
+
+async def _require_project_role(
+    project_uuid: uuid_pkg.UUID,
+    user: User,
+    db: AsyncSession,
+    allowed_roles: set[ProjectMemberRole],
+) -> User:
+    member_repo = ProjectMemberRepository(db)
+    role = await member_repo.get_role_for_user(project_uuid=project_uuid, user_id=user.id)
+    if role is None:
+        raise NotFoundError(detail="Project not found")
+    if role not in allowed_roles:
+        raise ForbiddenError(detail="Insufficient project permissions")
+    return user
+
+
+async def require_project_read_access(
+    project_uuid: uuid_pkg.UUID,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    return await _require_project_role(
+        project_uuid=project_uuid,
+        user=user,
+        db=db,
+        allowed_roles={ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR, ProjectMemberRole.VIEWER},
+    )
+
+
+async def require_project_write_access(
+    project_uuid: uuid_pkg.UUID,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    return await _require_project_role(
+        project_uuid=project_uuid,
+        user=user,
+        db=db,
+        allowed_roles={ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR},
+    )
+
+
+async def require_project_admin_access(
+    project_uuid: uuid_pkg.UUID,
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    return await _require_project_role(
+        project_uuid=project_uuid,
+        user=user,
+        db=db,
+        allowed_roles={ProjectMemberRole.OWNER},
+    )

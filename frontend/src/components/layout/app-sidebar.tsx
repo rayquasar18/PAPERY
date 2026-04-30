@@ -48,6 +48,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       icon: FolderKanban,
       href: '/projects' as const,
     },
+    ...(user?.is_superuser
+      ? [
+          {
+            key: 'admin' as const,
+            icon: Settings,
+            href: '/admin/users' as const,
+          },
+        ]
+      : []),
   ];
 
   // Secondary navigation at bottom

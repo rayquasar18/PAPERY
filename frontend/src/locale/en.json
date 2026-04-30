@@ -19,6 +19,7 @@
   "Navigation": {
     "dashboard": "Dashboard",
     "projects": "Projects",
+    "admin": "Admin",
     "settings": "Settings",
     "skipToMain": "Skip to main content"
   },

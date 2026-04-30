@@ -76,7 +76,12 @@ async def test_owner_crud_flow_and_soft_delete_hides_resource(
     async_client: AsyncClient,
     mock_owner_user: MagicMock,
 ) -> None:
-    from app.api.dependencies import get_current_active_user
+    from app.api.dependencies import (
+        get_current_active_user,
+        require_project_admin_access,
+        require_project_read_access,
+        require_project_write_access,
+    )
     from app.api.v1.projects import create_project_usage_guard
     from app.main import app
 
@@ -92,6 +97,9 @@ async def test_owner_crud_flow_and_soft_delete_hides_resource(
 
     app.dependency_overrides[get_current_active_user] = lambda: mock_owner_user
     app.dependency_overrides[create_project_usage_guard] = lambda: mock_owner_user
+    app.dependency_overrides[require_project_read_access] = lambda: mock_owner_user
+    app.dependency_overrides[require_project_write_access] = lambda: mock_owner_user
+    app.dependency_overrides[require_project_admin_access] = lambda: mock_owner_user
 
     with patch("app.api.v1.projects.ProjectService") as mock_service_cls:
         svc = mock_service_cls.return_value
@@ -134,17 +142,21 @@ async def test_owner_crud_flow_and_soft_delete_hides_resource(
 
     app.dependency_overrides.pop(get_current_active_user, None)
     app.dependency_overrides.pop(create_project_usage_guard, None)
+    app.dependency_overrides.pop(require_project_read_access, None)
+    app.dependency_overrides.pop(require_project_write_access, None)
+    app.dependency_overrides.pop(require_project_admin_access, None)
 
 
 async def test_non_member_get_returns_not_found(
     async_client: AsyncClient,
     mock_owner_user: MagicMock,
 ) -> None:
-    from app.api.dependencies import get_current_active_user
+    from app.api.dependencies import get_current_active_user, require_project_read_access
     from app.main import app
 
     project_uuid = uuid_pkg.uuid4()
     app.dependency_overrides[get_current_active_user] = lambda: mock_owner_user
+    app.dependency_overrides[require_project_read_access] = lambda: mock_owner_user
 
     with patch("app.api.v1.projects.ProjectService") as mock_service_cls:
         from app.core.exceptions import NotFoundError
@@ -156,3 +168,4 @@ async def test_non_member_get_returns_not_found(
         assert response.status_code == 404
 
     app.dependency_overrides.pop(get_current_active_user, None)
+    app.dependency_overrides.pop(require_project_read_access, None)

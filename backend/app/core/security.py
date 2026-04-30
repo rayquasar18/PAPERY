@@ -14,13 +14,13 @@ from passlib.context import CryptContext
 
 from app.configs import settings
 from app.core.exceptions import UnauthorizedError
-from app.infra.redis.client import cache_client
+from app.infra.redis import client as redis_client
 from app.schemas.auth import TokenPayload
 
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def hash_password(plain: str) -> str:
@@ -118,9 +118,9 @@ USER_FAMILIES_PREFIX = "user_families:"
 
 def _redis() -> object:
     """Return the cache Redis client, raising if unavailable."""
-    if cache_client is None:
+    if redis_client.cache_client is None:
         raise RuntimeError("Redis cache client not initialized")
-    return cache_client
+    return redis_client.cache_client
 
 
 # ---------------------------------------------------------------------------

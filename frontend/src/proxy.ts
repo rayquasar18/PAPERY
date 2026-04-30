@@ -3,7 +3,7 @@ import createMiddleware from 'next-intl/middleware';
 import { routing } from '@/lib/i18n/routing';
 
 const intlMiddleware = createMiddleware(routing);
-const PROTECTED_ROUTE_ROOTS = ['/dashboard', '/projects', '/settings'] as const;
+const PROTECTED_ROUTE_ROOTS = ['/dashboard', '/projects', '/settings', '/admin'] as const;
 const AUTH_ROUTE_ROOTS = [
   '/login',
   '/register',
@@ -51,7 +51,7 @@ function resolveLocale(request: NextRequest, localeFromPath: AppLocale | null): 
 
   const localeCookieConfig = routing.localeCookie;
 
-  if (localeCookieConfig && typeof localeCookieConfig !== 'boolean') {
+  if (localeCookieConfig && typeof localeCookieConfig !== 'boolean' && localeCookieConfig.name) {
     const localeFromCookie = request.cookies.get(localeCookieConfig.name)?.value;
 
     if (localeFromCookie && routing.locales.includes(localeFromCookie as AppLocale)) {
