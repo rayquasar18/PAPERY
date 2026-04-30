@@ -281,7 +281,6 @@
 | INFRA-13 | CI/CD pipeline via GitHub Actions (lint, type check, test, build, deploy) |
 
 ### Success Criteria
-
 1. User dashboard shows project list with create/edit/delete actions, member management, and search — all consuming backend APIs
 2. Admin panel UI shows user management, tier configuration, rate limit management, and system settings — all behind superuser-only route guard
 3. QuasarFlow client has a typed abstract interface and a mock implementation that returns realistic fake data for all expected AI operations
