@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid as uuid_pkg
 from enum import Enum
 from typing import Any
 
@@ -76,3 +77,113 @@ class AIJobProviderResponse(BaseModel):
         if status in {AIJobStatus.FAILED, AIJobStatus.TIMED_OUT} and value is None:
             raise ValueError("error is required for failed or timed_out status")
         return value
+
+
+class AIJobCreate(BaseModel):
+    """Public request payload for AI job submission."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: str = Field(..., min_length=1, max_length=64)
+    prompt: str = Field(..., min_length=1, max_length=20000)
+    document_ids: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AIJobRead(BaseModel):
+    """Polling-first API response for persisted AI jobs."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: uuid_pkg.UUID
+    status: AIJobStatus
+    action: str
+    progress: int
+    attempt: int
+    max_attempts: int
+    result_payload: dict[str, Any] | None = None
+    error_payload: dict[str, Any] | None = None
+
+
+class AIJobSubmitResponse(BaseModel):
+    """Accepted response returned immediately after enqueue-style submission."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: uuid_pkg.UUID
+    status: AIJobStatus
+    action: str
+    progress: int = 0
+    attempt: int = 1
+    max_attempts: int = 3
+    result_payload: dict[str, Any] | None = None
+    error_payload: dict[str, Any] | None = None
+
+
+class AIJobErrorEnvelope(BaseModel):
+    """Compact error envelope used by AI job polling endpoints."""
+
+    code: str
+    message: str
+
+
+class AIJobErrorResponse(BaseModel):
+    """Error contract expected by AI job API tests."""
+
+    error: AIJobErrorEnvelope
+    request_id: str | None = None
+
+
+
+def build_ai_job_read(payload: Any) -> AIJobRead:
+    """Normalize service/model objects into the public polling response shape."""
+
+    return AIJobRead(
+        job_id=payload.uuid,
+        status=payload.status,
+        action=payload.action,
+        progress=getattr(payload, "progress", 0),
+        attempt=getattr(payload, "attempt", 1),
+        max_attempts=getattr(payload, "max_attempts", 3),
+        result_payload=getattr(payload, "result_payload", None),
+        error_payload=getattr(payload, "error_payload", None),
+    )
+
+
+
+def build_ai_job_submit_response(payload: Any) -> AIJobSubmitResponse:
+    """Normalize service/model objects into the accepted submission response."""
+
+    return AIJobSubmitResponse(
+        job_id=payload.uuid,
+        status=payload.status,
+        action=payload.action,
+        progress=getattr(payload, "progress", 0),
+        attempt=getattr(payload, "attempt", 1),
+        max_attempts=getattr(payload, "max_attempts", 3),
+        result_payload=getattr(payload, "result_payload", None),
+        error_payload=getattr(payload, "error_payload", None),
+    )
+
+
+
+def build_ai_job_error_response(code: str, message: str, request_id: str | None = None) -> AIJobErrorResponse:
+    """Build the compact AI job endpoint error response."""
+
+    return AIJobErrorResponse(error=AIJobErrorEnvelope(code=code, message=message), request_id=request_id)
+
+
+__all__ = [
+    "AIJobCreate",
+    "AIJobErrorDetail",
+    "AIJobErrorEnvelope",
+    "AIJobErrorResponse",
+    "AIJobProviderResponse",
+    "AIJobRead",
+    "AIJobRequest",
+    "AIJobStatus",
+    "AIJobSubmitResponse",
+    "build_ai_job_error_response",
+    "build_ai_job_read",
+    "build_ai_job_submit_response",
+]
