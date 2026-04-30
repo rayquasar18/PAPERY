@@ -278,14 +278,14 @@
 | QFLOW-03 | Error handling patterns — timeout, retry, circuit breaker |
 | QFLOW-04 | Async pattern — AI calls go through ARQ task queue, frontend polls or SSE for results |
 | INFRA-05 | ARQ background task worker for async processing |
-| INFRA-13 | CI/CD pipeline via GitHub Actions (lint, type check, test, build, deploy) |
+| INFRA-13 | Verify-only CI pipeline via GitHub Actions (lint, type check, test, build) with deployment automation deferred |
 
 ### Success Criteria
 1. User dashboard shows project list with create/edit/delete actions, member management, and search — all consuming backend APIs
 2. Admin panel UI shows user management, tier configuration, rate limit management, and system settings — all behind superuser-only route guard
 3. QuasarFlow client has a typed abstract interface and a mock implementation that returns realistic fake data for all expected AI operations
 4. AI call simulation works end-to-end: frontend triggers action -> backend enqueues ARQ task -> mock QuasarFlow processes -> frontend polls/SSE for result
-5. CI/CD pipeline runs lint, type check, tests, builds Docker images, and deploys on push to main/develop
+5. Verify-only CI pipeline runs lint, type check, tests, and frontend/backend build validation on push and pull_request, with deployment automation intentionally deferred
 
 ---
 

@@ -67,7 +67,7 @@ Requirements for initial release — SaaS foundation. Each maps to roadmap phase
 - [ ] **INFRA-10**: CORS configuration — explicit origin allowlist from environment, never wildcard in production
 - [x] **INFRA-11**: Docker Compose development environment (backend, worker, PostgreSQL, Redis, MinIO)
 - [ ] **INFRA-12**: Production-optimized Docker images (multi-stage build, no --reload, proper workers)
-- [ ] **INFRA-13**: CI/CD pipeline via GitHub Actions (lint, type check, test, build, deploy)
+- [ ] **INFRA-13**: Verify-only CI pipeline via GitHub Actions (lint, type check, test, build) with deployment automation explicitly deferred
 - [x] **INFRA-14**: Dual ID strategy — int id (internal) + UUID (public API)
 - [x] **INFRA-15**: Soft delete mixin on all core entities (never hard delete)
 
