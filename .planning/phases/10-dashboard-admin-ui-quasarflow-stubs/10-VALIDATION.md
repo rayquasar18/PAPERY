@@ -1,65 +1,88 @@
-# Phase 10 Plan Validation
+# Phase 10 Validation Notes
 
-Date: 2026-04-28
+Updated: 2026-04-30
 Phase: 10-dashboard-admin-ui-quasarflow-stubs
-Validator: gsd-plan-checker (goal-backward)
+Scope: Plan 10-04 verify-only CI alignment
 
-## Scope Checked
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-01-PLAN.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-02-PLAN.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-03-PLAN.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-04-PLAN.md`
+## Canonical Local Verify Commands
 
-Inputs used:
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/ROADMAP.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/REQUIREMENTS.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-CONTEXT.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/.planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-RESEARCH.md`
-- `/Users/mqcbook/Documents/github/my-source/PAPERY/CLAUDE.md`
+### Frontend
+```bash
+cd frontend && pnpm lint && pnpm typecheck && pnpm build
+```
 
-## Goal-backward Coverage
-Phase 10 goal requires dashboard UI + admin UI + QuasarFlow stubs + async queue flow + verify-only CI.
+### Backend
+```bash
+cd backend && make verify
+```
 
-Requirement coverage across plans:
-- QFLOW-01 → Plan 10-01
-- QFLOW-02 → Plan 10-01
-- QFLOW-03 → Plan 10-02
-- QFLOW-04 → Plans 10-02, 10-03
-- INFRA-05 → Plan 10-02
-- INFRA-13 → Plan 10-04
+`make verify` expands to:
+```bash
+uv run ruff check .
+uv run mypy app/
+uv run pytest -q
+```
 
-Result: all phase requirements are covered by plan frontmatter and concrete tasks.
+## GitHub Actions Verify Workflow
 
-## Context Compliance (D-01..D-09)
-- D-01/D-02/D-03 mapped in 10-03 Task 1 (hybrid view, search+sort-only toolbar, actionable empty state)
-- D-04/D-05/D-06 mapped in 10-03 Task 2 (shared app, /(admin) boundary, 4 core admin modules)
-- D-07/D-08 mapped in 10-02 tasks and reflected in 10-03 polling client wiring
-- D-09 mapped in 10-04 tasks and workflow scope
-- Deferred ideas excluded (no separate admin app, no SSE-default, no deploy automation)
+Workflow file:
+- `.github/workflows/verify.yml`
 
-Result: context-compliant.
+Trigger matrix:
+- push to `main`
+- push to `develop`
+- push to `feature/**`
+- push to `hotfix/**`
+- push to `release/**`
+- all `pull_request` events
 
-## Dependency and Scope Review
-- Plan waves/deps are valid and acyclic: 01 → 02 → 03 and 02+03 → 04
-- Task counts: 10-01(2), 10-02(2), 10-03(3 incl. human checkpoint), 10-04(2)
-- File counts are within practical range for each plan
+Jobs:
+- `backend` — setup Python 3.12 + uv, then run lint, mypy, pytest
+- `frontend` — setup Node 22 + pnpm, then run lint, typecheck, build
 
-Result: no dependency blockers, no scope blocker.
+## Verify-only Policy Compliance
 
-## Nyquist / Verification Quality
-- All auto tasks include `<verify><automated>...</automated></verify>`
-- No watch-mode commands found
-- Verification commands are specific to changed surfaces
+Confirmed exclusions:
+- no deploy job
+- no publish/release job
+- no environment promotion steps
+- no secret-requiring delivery stage
 
-Issue fixed during validation:
-- Plan 10-04 Task 1 verify command originally omitted explicit frontend type-check.
-- Updated to include `pnpm typecheck` so INFRA-13 gate (lint + type-check + test + build) is fully represented.
+## Local Validation Results
 
-## Per-Plan Verdict
-- 10-01-PLAN.md: PASS
-- 10-02-PLAN.md: PASS
-- 10-03-PLAN.md: PASS
-- 10-04-PLAN.md: PASS (after verify command fix)
+### Frontend
+Status: PASS
 
-## Final Verdict
-PASS — Phase 10 plans are execution-ready with requirement-complete, context-compliant, and dependency-valid decomposition.
+Command run:
+```bash
+cd frontend && pnpm lint && pnpm typecheck && pnpm build
+```
+
+Notes:
+- `pnpm lint` emits existing React Compiler compatibility warnings in unrelated pre-existing files (`register-form.tsx`, `data-table.tsx`) but does not fail.
+- `pnpm typecheck` passes.
+- `pnpm build` passes.
+
+### Backend
+Status: FAILING REPOSITORY BASELINE
+
+Command run:
+```bash
+cd backend && make verify
+```
+
+Outcome:
+- Phase 10 scoped files were corrected to satisfy their own lint issues.
+- Repository-wide backend verify still fails because of numerous pre-existing lint violations outside phase 10 scope (for example in `app/api/v1/billing.py`, `app/infra/oauth/base.py`, `tests/test_password_reset.py`, `tests/test_users.py`, and other older files).
+
+Interpretation:
+- CI workflow is valid and verify-only.
+- Frontend command surface is canonical and green.
+- Backend canonical command surface is in place, but current repository baseline is not yet globally green.
+- A follow-up cleanup pass is required if the team wants the backend CI job to pass immediately on this branch.
+
+## Troubleshooting Notes
+
+- If GitHub Actions frontend install fails, ensure `frontend/package-lock.json` remains committed and in sync with `package.json`.
+- If backend verify fails in CI, compare failing files against local `make verify` output before changing workflow logic.
+- Do not weaken the workflow by skipping lint or type-check to compensate for repository baseline issues.

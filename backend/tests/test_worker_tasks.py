@@ -13,7 +13,13 @@ async def test_process_ai_job_marks_running_then_succeeded() -> None:
     from app.worker.tasks.ai_jobs import process_ai_job
 
     job_id = uuid_pkg.uuid4()
-    fake_job = SimpleNamespace(uuid=job_id, action="summarize", prompt="hello", document_ids=["doc-1"], metadata_payload={})
+    fake_job = SimpleNamespace(
+        uuid=job_id,
+        action="summarize",
+        prompt="hello",
+        document_ids=["doc-1"],
+        metadata_payload={},
+    )
     provider_result = SimpleNamespace(output={"summary": "done"})
 
     with (
@@ -45,7 +51,13 @@ async def test_process_ai_job_requeues_retryable_failures() -> None:
     from app.worker.tasks.ai_jobs import process_ai_job
 
     job_id = uuid_pkg.uuid4()
-    fake_job = SimpleNamespace(uuid=job_id, action="summarize", prompt="hello", document_ids=[], metadata_payload={})
+    fake_job = SimpleNamespace(
+        uuid=job_id,
+        action="summarize",
+        prompt="hello",
+        document_ids=[],
+        metadata_payload={},
+    )
 
     with (
         patch("app.worker.tasks.ai_jobs.get_session_context") as get_session_context,
@@ -76,7 +88,13 @@ async def test_process_ai_job_fast_fails_when_circuit_open() -> None:
     from app.worker.tasks.ai_jobs import process_ai_job
 
     job_id = uuid_pkg.uuid4()
-    fake_job = SimpleNamespace(uuid=job_id, action="summarize", prompt="hello", document_ids=[], metadata_payload={})
+    fake_job = SimpleNamespace(
+        uuid=job_id,
+        action="summarize",
+        prompt="hello",
+        document_ids=[],
+        metadata_payload={},
+    )
 
     with (
         patch("app.worker.tasks.ai_jobs.get_session_context") as get_session_context,

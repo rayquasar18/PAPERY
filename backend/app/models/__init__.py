@@ -28,7 +28,7 @@ __all__ = [
     "SystemSetting",
     "Tier",
     "TimestampMixin",
-    "UsageTracking",
     "UUIDMixin",
+    "UsageTracking",
     "User",
 ]

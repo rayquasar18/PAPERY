@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid as uuid_pkg
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class AIJobStatus(str, Enum):
+class AIJobStatus(StrEnum):
     """AI job lifecycle statuses used across providers and service boundaries."""
 
     PENDING = "pending"

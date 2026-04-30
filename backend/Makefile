@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-cov lint format typecheck clean migrate migrate-new docker-up docker-down docker-build
+.PHONY: help install dev test test-cov lint format typecheck verify clean migrate migrate-new docker-up docker-down docker-build
 
 # Default target
 help: ## Show available targets
@@ -26,6 +26,11 @@ format: ## Format code with ruff
 
 typecheck: ## Run mypy type checker
 	uv run mypy app/
+
+verify: ## Run canonical backend verify chain (lint, typecheck, tests)
+	uv run ruff check .
+	uv run mypy app/
+	uv run pytest -q
 
 clean: ## Remove cache directories
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

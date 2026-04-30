@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, Enum as SAEnum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 from app.schemas.ai_job import AIJobStatus
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class AIJob(Base, UUIDMixin, TimestampMixin):
@@ -44,4 +49,4 @@ class AIJob(Base, UUIDMixin, TimestampMixin):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
-    owner: Mapped["User"] = relationship("User", lazy="selectin")
+    owner: Mapped[User] = relationship("User", lazy="selectin")

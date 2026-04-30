@@ -7,8 +7,6 @@ import uuid as uuid_pkg
 from contextlib import asynccontextmanager
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.db.session import async_session_factory
 from app.schemas.ai_job import AIJobErrorDetail
 from app.services.ai_job_service import AIJobService
