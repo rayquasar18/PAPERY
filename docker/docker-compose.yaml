@@ -1,4 +1,4 @@
-# Docker Compose — Full stack (CI, staging, production)
+# Docker Compose — Enterprise full stack
 # Usage: docker compose -f docker/docker-compose.yaml up -d
 
 name: papery
@@ -69,38 +69,49 @@ services:
       timeout: 5s
       retries: 5
 
-  web:
-    build:
-      context: ../backend
-      dockerfile: ../docker/Dockerfile.dev
-    container_name: papery-web
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - ../backend:/app
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-
-  web-prod:
+  backend:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: papery-web-prod
+    container_name: papery-backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     env_file:
-      - ../.env
+      - ../backend/.env
+    ports:
+      - "8200:8000"
     environment:
+      FRONTEND_URL: http://localhost:3200
+      CORS_ORIGINS: '["http://localhost:3200","http://127.0.0.1:3200"]'
+      OAUTH_REDIRECT_BASE_URL: http://localhost:8200
+      STRIPE_SUCCESS_URL: http://localhost:3200/billing/success
+      STRIPE_CANCEL_URL: http://localhost:3200/billing/cancel
+      STRIPE_PORTAL_RETURN_URL: http://localhost:3200/account
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-papery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-papery_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-papery}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-papery_redis_dev}
+      REDIS_CACHE_HOST: redis
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${REDIS_PASSWORD:-papery_redis_dev}
+      REDIS_QUEUE_HOST: redis
+      REDIS_QUEUE_PORT: 6379
+      REDIS_QUEUE_PASSWORD: ${REDIS_PASSWORD:-papery_redis_dev}
+      REDIS_RATE_LIMIT_HOST: redis
+      REDIS_RATE_LIMIT_PORT: 6379
+      REDIS_RATE_LIMIT_PASSWORD: ${REDIS_PASSWORD:-papery_redis_dev}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_SECURE: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET_NAME: papery
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-papery}:${POSTGRES_PASSWORD:-papery_dev_password}@db:5432/${POSTGRES_DB:-papery}
+      ASYNC_DATABASE_URI: postgresql+asyncpg://${POSTGRES_USER:-papery}:${POSTGRES_PASSWORD:-papery_dev_password}@db:5432/${POSTGRES_DB:-papery}
+      SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-papery}:${POSTGRES_PASSWORD:-papery_dev_password}@db:5432/${POSTGRES_DB:-papery}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      APP_ENV: production
+      ENV: production
     depends_on:
       db:
         condition: service_healthy
@@ -108,14 +119,28 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    profiles:
-      - production
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
       timeout: 5s
       start_period: 15s
       retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: papery-frontend
+    restart: unless-stopped
+    ports:
+      - "3200:3000"
+    environment:
+      NEXT_PUBLIC_BACKEND_API_URL: http://localhost:8200
+      NEXT_PUBLIC_API_VERSION: v1
+      BACKEND_API_URL: http://backend:8000
+      API_VERSION: v1
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

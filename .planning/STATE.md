@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 7
-status: planning
-stopped_at: Phase 7 context gathered
-last_updated: "2026-04-11T14:26:27.810Z"
-last_activity: "2026-04-11 - Completed quick task 260411-q6r: Post-phase-6 system audit"
+current_phase: 10
+status: executing
+stopped_at: Phase 10 context gathered
+last_updated: "2026-04-30T07:21:25.192Z"
+last_activity: 2026-04-30
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 25
-  completed_plans: 25
-  percent: 100
+  completed_phases: 9
+  total_plans: 43
+  completed_plans: 40
+  percent: 93
 ---
 
 # Project State: PAPERY
 
 **Last updated:** 2026-04-10
-**Current phase:** 7
-**Status:** Ready to plan
+**Current phase:** 10
+**Status:** Executing Phase 10
 
 ---
 
@@ -54,7 +54,7 @@ progress:
 | 5 | User Profile & Account Management | 3 | ⬜ Not started |
 | 6 | Tier System & Permissions | 6 | ⬜ Not started |
 | 7 | Admin Panel (Backend) | 6 | ⬜ Not started |
-| 8 | Project System & ACL | 6 | ⬜ Not started |
+| 8 | Project System & ACL | 6 | 🔄 In progress (1/4 plans) |
 | 9 | Frontend Foundation & Auth UI | 11 | ⬜ Not started |
 | 10 | Dashboard, Admin UI & QFlow Stubs | 6 | ⬜ Not started |
 
@@ -97,6 +97,8 @@ progress:
 | Repository layer added — services/ delegates data access to repositories/ | ox9 | Clean separation of concerns; services own business logic, repos own queries; easier to test and extend | 2026-04-10 |
 | BaseRepository generic get(**filters)/get_multi/delete — field-based lookup pattern | pdh | Eliminates per-field methods; single `get(email=...)` replaces `get_by_email`; standard CRUD completeness | 2026-04-10 |
 | Class-based services with constructor DI — `AuthService(db)` pattern | u0m | One instance per request; repo created once in __init__; sets template for all future services | 2026-04-10 |
+| Project create keeps quota guard dependency separate from identity dependency | 08 | Preserves usage limit enforcement while avoiding dependency signature pitfalls in endpoint tests | 2026-04-27 |
+| Project UUID access returns NotFoundError when user lacks owner/member scope | 08 | Prevents resource existence disclosure and aligns project detail/update/delete semantics | 2026-04-27 |
 
 ---
 
@@ -119,14 +121,17 @@ None currently.
 | 260410-u0m | Refactor auth_service from standalone functions to class-based AuthService with DI | 2026-04-10 | e4398a4 | [260410-u0m-refactor-auth-service-from-standalone-fu](./quick/260410-u0m-refactor-auth-service-from-standalone-fu/) |
 | 260410-udg | Set Docker Compose project name to 'papery' for proper Docker Desktop grouping | 2026-04-10 | e5d78b0 | [260410-udg-set-docker-compose-project-name-to-paper](./quick/260410-udg-set-docker-compose-project-name-to-paper/) |
 | 260411-q6r | Post-phase-6 system audit: schemas, rate limiting, service patterns, Stripe | 2026-04-11 | a4b3a2a | [260411-q6r-post-phase-6-comprehensive-system-audit-](./quick/260411-q6r-post-phase-6-comprehensive-system-audit-/) |
+| 260413-3ew | Restructure frontend lib directory and audit auth proxy flow | 2026-04-12 | f33d492 | [260413-3ew-restructure-frontend-lib-directory-and-a](./quick/260413-3ew-restructure-frontend-lib-directory-and-a/) |
+| 260413-j7q | Change chatbot tab from overlay to inline side panel | 2026-04-13 | 683ea3c | [260413-j7q-change-chatbot-tab-to-side-panel-layout-](./quick/260413-j7q-change-chatbot-tab-to-side-panel-layout-/) |
+| 260423-qhm | Implement missing auth guard in frontend proxy for protected routes with locale-aware login redirect | 2026-04-23 | 943848a | [260423-qhm-implement-missing-auth-guard-in-frontend](./quick/260423-qhm-implement-missing-auth-guard-in-frontend/) |
 
 ---
 
 ## Session Continuity
 
-**Stopped at:** Phase 7 context gathered
-**Resume file:** .planning/phases/07-admin-panel-backend/07-CONTEXT.md
-**Next action:** Begin Phase 4 (Authentication — Advanced & Password Management)
+**Stopped at:** Phase 10 context gathered
+**Resume file:** .planning/phases/10-dashboard-admin-ui-quasarflow-stubs/10-CONTEXT.md
+**Next action:** Execute Phase 8 Plan 02 (ACL role matrix)
 
 ---
 
@@ -137,6 +142,7 @@ None currently.
 | 01 | 01 | 6min | 6 | 20 |
 | 01 | 03 | 4min | 4 | 8 |
 | 01 | 04 | 14min | 3 | 3 |
+| 08 | 01 | 14 min | 2 | 9 |
 
 ---
 | Phase 01 P04 | 14min | 3 tasks | 3 files |
@@ -156,6 +162,6 @@ None currently.
 ---
 
 *State initialized: 2026-04-01*
-Last activity: 2026-04-11 - Completed quick task 260411-q6r: Post-phase-6 system audit
+Last activity: 2026-04-30
 
 *Last updated: 2026-04-09*
